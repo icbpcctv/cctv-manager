@@ -1,0 +1,642 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CCTV Manager</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <main class="app">
+
+    <header class="appHeader">
+      <div class="appHeaderLine singleLineHeader">
+        <h1>CCTV MANAGER</h1>
+        <div class="headerMeta compactHeaderMeta">
+          <span id="headerDateText">날짜</span>
+          <span id="headerShiftBadge" class="shiftBadge">근무</span>
+          <span id="headerTeamName" class="teamBadge">1조</span>
+          <span id="headerUserName" class="memberInline">사용자</span>
+        </div>
+      </div>
+    </header>
+
+    <section id="homePage" class="page active">
+      <section class="sectionTitle firstTitle">
+        <h2>오늘 현황보드</h2>
+      </section>
+
+      <div class="statusBlock">
+        <div class="statusHeader"><h3>실시간실적</h3></div>
+        <div class="tableWrap compactMatrix"><table id="realtimeSummaryTable"></table></div>
+        <p id="realtimeMonthHint" class="monthHint"></p>
+      </div>
+
+      <div class="statusBlock">
+        <div class="statusHeader"><h3>민원처리</h3></div>
+        <div class="tableWrap compactMatrix"><table id="civilSummaryTable"></table></div>
+        <p id="civilMonthHint" class="monthHint"></p>
+      </div>
+
+      <div class="statusBlock">
+        <div class="statusHeader"><h3>경찰관제요청</h3></div>
+        <div class="tableWrap compactMatrix"><table id="policeSummaryTable"></table></div>
+        <p id="policeMonthHint" class="monthHint"></p>
+      </div>
+
+      <div class="statusBlock">
+        <div class="statusHeader"><h3>영상열람반출</h3></div>
+        <div class="tableWrap compactMatrix"><table id="videoSummaryTable"></table></div>
+        <p id="videoMonthHint" class="monthHint"></p>
+      </div>
+
+      <div class="statusBlock">
+        <div class="statusHeader"><h3>정보공개</h3></div>
+        <div class="tableWrap compactMatrix"><table id="infoSummaryTable"></table></div>
+        <p id="infoMonthHint" class="monthHint"></p>
+      </div>
+
+      <section class="sectionTitle">
+        <h2>오늘 발생 세부내용</h2>
+      </section>
+
+      <div class="detailBlock">
+        <h3>실시간실적</h3>
+        <div class="wideScroll detailTable"><table id="realtimeTodayTable"></table></div>
+      </div>
+
+      <div class="detailBlock">
+        <h3>경찰관제요청</h3>
+        <div class="wideScroll detailTable"><table id="policeTodayTable"></table></div>
+      </div>
+
+      <div class="detailBlock">
+        <h3>민원내용</h3>
+        <div class="wideScroll detailTable"><table id="civilTodayTable"></table></div>
+      </div>
+
+      <div class="detailBlock">
+        <h3>사후결재</h3>
+        <div class="wideScroll detailTable"><table id="approvalHomeTable"></table></div>
+      </div>
+
+      <div class="detailBlock">
+        <h3>파기공문</h3>
+        <div class="wideScroll detailTable"><table id="destroyHomeTable"></table></div>
+      </div>
+    </section>
+
+    <section id="monthPage" class="page">
+      <div class="monthControl compactMonthControl">
+        <button id="prevPeriodBtn" type="button">‹</button>
+
+        <div class="periodPickerBox">
+          <select id="periodMode" aria-label="월별 또는 년별">
+            <option value="month">월</option>
+            <option value="year">년</option>
+          </select>
+          <input id="periodMonthPicker" type="month" />
+          <input id="periodYearPicker" class="hidden" type="number" min="2000" max="2100" />
+        </div>
+
+        <button id="nextPeriodBtn" type="button">›</button>
+      </div>
+
+      <div class="actionRow">
+        <button id="exportExcelBtn" type="button">엑셀 저장</button>
+        <button id="exportPdfBtn" type="button">PDF 저장</button>
+      </div>
+
+      <section class="sectionTitle">
+        <h2>월현황</h2>
+      </section>
+
+      <div class="statusBlock">
+        <div class="statusHeader"><h3>일자별 현황</h3></div>
+        <div class="tableWrap compactMatrix"><table id="monthDailyTable"></table></div>
+      </div>
+
+      <div class="statusBlock">
+        <div class="statusHeader"><h3>경찰관제요청</h3></div>
+        <div class="tableWrap compactMatrix"><table id="monthPoliceTable"></table></div>
+      </div>
+
+      <div class="statusBlock">
+        <div class="statusHeader"><h3>영상열람반출</h3></div>
+        <div class="tableWrap compactMatrix"><table id="monthVideoTable"></table></div>
+      </div>
+
+      <div class="statusBlock">
+        <div class="statusHeader"><h3>민원</h3></div>
+        <div class="tableWrap compactMatrix"><table id="monthCivilTable"></table></div>
+      </div>
+
+      <div class="statusBlock">
+        <div class="statusHeader"><h3>정보공개</h3></div>
+        <div class="tableWrap compactMatrix"><table id="monthInfoTable"></table></div>
+      </div>
+
+      <div class="statusBlock">
+        <div class="statusHeader"><h3>개인실적</h3></div>
+        <div class="tableWrap compactMatrix"><table id="monthRealtimeTable"></table></div>
+      </div>
+
+      <div class="detailBlock">
+        <h3>개인특이사항</h3>
+        <div class="wideScroll detailTable"><table id="monthPersonalSpecialTable"></table></div>
+      </div>
+
+      <div class="detailBlock">
+        <h3>조특이사항</h3>
+        <div class="wideScroll detailTable"><table id="monthTeamSpecialTable"></table></div>
+      </div>
+
+      <div class="detailBlock">
+        <h3>사후결재</h3>
+        <div class="wideScroll detailTable"><table id="monthApprovalTable"></table></div>
+      </div>
+
+      <div class="detailBlock">
+        <h3>파기공문</h3>
+        <div class="wideScroll detailTable"><table id="monthDestroyTable"></table></div>
+      </div>
+    </section>
+
+    <section id="managePage" class="page">
+      <div class="panel">
+        <h2>근무 / 조 관리</h2>
+
+        <details class="settingDetails">
+          <summary>근무패턴 수정</summary>
+
+          <label for="settingBaseDate">기준일</label>
+          <input id="settingBaseDate" type="date" />
+
+          <label for="settingBaseShift">기준일 근무</label>
+          <select id="settingBaseShift">
+            <option value="오전">오전</option>
+            <option value="오후">오후</option>
+            <option value="야간">야간</option>
+            <option value="비번">비번</option>
+            <option value="휴무">휴무</option>
+          </select>
+
+          <label for="settingShiftPattern">근무패턴</label>
+          <input id="settingShiftPattern" type="text" placeholder="비번,휴무,오전,오전,오후,오후,야간,야간" />
+
+          <div class="actionRow inner">
+            <button id="saveShiftSettingBtn" type="button">저장</button>
+            <button id="resetShiftSettingBtn" type="button">초기화</button>
+          </div>
+        </details>
+
+        <details class="settingDetails">
+          <summary>조 입력 / 변경</summary>
+
+          <label for="activeTeamSelect">현재 사용할 조</label>
+          <select id="activeTeamSelect">
+            <option value="1조">1조</option>
+            <option value="2조">2조</option>
+            <option value="3조">3조</option>
+            <option value="4조">4조</option>
+          </select>
+
+          <label for="currentUserSelect">현재 사용자</label>
+          <select id="currentUserSelect">
+            <option value="">조원 없음</option>
+          </select>
+
+          <label for="editTeamSelect">수정할 조</label>
+          <select id="editTeamSelect">
+            <option value="1조">1조</option>
+            <option value="2조">2조</option>
+            <option value="3조">3조</option>
+            <option value="4조">4조</option>
+          </select>
+
+          <div class="memberInputGrid">
+            <div>
+              <label for="teamMember1">조원 1</label>
+              <input id="teamMember1" type="text" placeholder="이름" />
+            </div>
+            <div>
+              <label for="teamMember2">조원 2</label>
+              <input id="teamMember2" type="text" placeholder="이름" />
+            </div>
+            <div>
+              <label for="teamMember3">조원 3</label>
+              <input id="teamMember3" type="text" placeholder="이름" />
+            </div>
+            <div>
+              <label for="teamMember4">조원 4</label>
+              <input id="teamMember4" type="text" placeholder="이름" />
+            </div>
+          </div>
+
+          <div class="actionList">
+            <button id="saveTeamSettingBtn" type="button">조 정보 저장</button>
+          </div>
+
+          <div id="allTeamsPreview" class="teamPreview"></div>
+        </details>
+
+        <details class="settingDetails">
+          <summary>화면 테마</summary>
+
+          <label for="themeSelect">컬러톤 선택</label>
+          <select id="themeSelect">
+            <option value="ios-blue">iOS 블루</option>
+            <option value="ios-sage">세이지 그린</option>
+            <option value="ios-lavender">라벤더</option>
+            <option value="ios-graphite">그래파이트</option>
+          </select>
+
+          <div class="themePreviewGrid">
+            <div class="themePreview themeBlue"><span></span><strong>iOS 블루</strong></div>
+            <div class="themePreview themeSage"><span></span><strong>세이지</strong></div>
+            <div class="themePreview themeLavender"><span></span><strong>라벤더</strong></div>
+            <div class="themePreview themeGraphite"><span></span><strong>그래파이트</strong></div>
+          </div>
+
+          <div class="actionList">
+            <button id="saveThemeSettingBtn" type="button">테마 저장</button>
+          </div>
+        </details>
+      </div>
+
+      <div class="panel">
+        <h2>데이터 관리</h2>
+        <div class="actionList">
+          <button id="backupExportBtn" type="button">백업하기</button>
+          <label class="fileButton">
+            백업 복원
+            <input id="backupImportInput" type="file" accept="application/json" />
+          </label>
+        </div>
+        <p id="backupText" class="hintText">백업 정보 없음</p>
+      </div>
+
+      <div class="panel appInfo">
+        <div class="appIcon">C</div>
+        <h2>CCTV Manager</h2>
+        <p>최신버전을 사용중입니다.</p>
+        <span id="versionText">현재버전</span>
+      </div>
+
+      <details class="panel creatorInfo">
+        <summary>제작자 정보</summary>
+        <p><strong>제작자</strong> 배상원</p>
+        <p><strong>문의하기</strong> airclan@gmail.com</p>
+      </details>
+
+      <div class="panel emptySpace">
+        <p>새 기능 추가 예정</p>
+      </div>
+    </section>
+  </main>
+
+  <div id="quickBackdrop" class="quickBackdrop"></div>
+
+  <div id="quickDialWrap" class="quickDialWrap">
+    <div id="quickDial" class="quickDial">
+      <button type="button" class="dialItem" data-type="realtime">실시간<br />실적</button>
+      <button type="button" class="dialItem" data-type="civil">민원<br />처리</button>
+      <button type="button" class="dialItem" data-type="police">경찰관제<br />요청</button>
+      <button type="button" class="dialItem" data-type="video">영상열람<br />반출</button>
+      <button type="button" class="dialItem" data-type="info">정보<br />공개</button>
+    </div>
+
+    <button id="quickAddBtn" class="quickAddBtn" type="button">
+      <span>＋</span>
+      <strong>새입력</strong>
+    </button>
+  </div>
+
+  <nav class="bottomTabs">
+    <button class="bottomTab active" type="button" data-page="homePage">
+      <span class="tabIcon iconHome"></span>
+      <strong>홈</strong>
+    </button>
+
+    <button class="bottomTab" type="button" data-page="monthPage">
+      <span class="tabIcon iconChart"></span>
+      <strong>월현황</strong>
+    </button>
+
+    <button class="bottomTab" type="button" data-page="managePage">
+      <span class="tabIcon iconMenu"></span>
+      <strong>III</strong>
+    </button>
+  </nav>
+
+  <div id="inputModal" class="modal">
+    <div class="sheet">
+      <div class="sheetHeader">
+        <h2 id="modalTitle">입력</h2>
+        <button id="closeInputModal" type="button">×</button>
+      </div>
+
+      <div id="modalForms">
+        <form id="formRealtime" class="inputForm">
+          <div class="dateTimeRow">
+            <div>
+              <label for="rtDate">날짜</label>
+              <input id="rtDate" type="date" />
+            </div>
+            <div>
+              <label for="rtStartTime">시작시간</label>
+              <input id="rtStartTime" type="time" />
+            </div>
+          </div>
+
+          <label for="rtEndTime">종료시간</label>
+          <input id="rtEndTime" type="time" />
+
+          <label for="rtManageNo">관리번호</label>
+          <input id="rtManageNo" type="text" />
+
+          <label for="rtLocation">위치</label>
+          <input id="rtLocation" type="text" />
+
+          <label for="rtCategory">구분</label>
+          <select id="rtCategory">
+            <option>강력</option>
+            <option>경범죄</option>
+            <option>청소년</option>
+            <option>재난</option>
+            <option>교통사고</option>
+            <option>기타</option>
+          </select>
+
+          <label for="rtContent">내용</label>
+          <textarea id="rtContent" rows="4"></textarea>
+
+          <label for="rtNote">비고</label>
+          <input id="rtNote" type="text" />
+
+          <label class="checkRow">
+            <input id="rtPersonalSpecial" type="checkbox" />
+            <span>개인특이사항에도 저장</span>
+          </label>
+
+          <button class="saveBtn" type="submit">저장</button>
+        </form>
+
+        <form id="formCivil" class="inputForm">
+          <div class="dateTimeRow">
+            <div>
+              <label for="civilDate">날짜</label>
+              <input id="civilDate" type="date" />
+            </div>
+            <div>
+              <label for="civilTime">시간</label>
+              <input id="civilTime" type="time" />
+            </div>
+          </div>
+
+          <label for="civilType">구분</label>
+          <select id="civilType">
+            <option>비상벨대응</option>
+            <option>비상벨계도</option>
+            <option>비상벨기타</option>
+            <option>전화민원</option>
+          </select>
+
+          <div id="civilPhoneOwnerGroup">
+            <label for="civilPhoneOwner">전화민원 처리자 구분</label>
+            <select id="civilPhoneOwner">
+              <option value="나">나</option>
+              <option value="대리">대리</option>
+            </select>
+          </div>
+
+          <div id="civilProxyGroup">
+            <label for="civilProxyMember">대리 입력 대상 조원</label>
+            <input id="civilProxyMember" type="text" placeholder="조원 이름" />
+          </div>
+
+          <div id="civilComplainantGroup">
+            <label for="civilComplainantInfo">민원인정보</label>
+            <input id="civilComplainantInfo" type="text" placeholder="이름 또는 연락처" />
+          </div>
+
+          <div id="civilManageGroup">
+            <label for="civilManageNo">관리번호</label>
+            <input id="civilManageNo" type="text" placeholder="카메라번호" />
+          </div>
+
+          <div id="civilLocationGroup">
+            <label for="civilLocation">위치</label>
+            <input id="civilLocation" type="text" />
+          </div>
+
+          <div id="civilContentGroup">
+            <label for="civilContent">민원내용</label>
+            <textarea id="civilContent" rows="4"></textarea>
+          </div>
+
+          <div id="civilActionGroup">
+            <label for="civilAction">조치사항</label>
+            <textarea id="civilAction" rows="3"></textarea>
+          </div>
+
+          <button class="saveBtn" type="submit">저장</button>
+        </form>
+
+        <form id="formPolice" class="inputForm">
+          <div class="dateTimeRow">
+            <div>
+              <label for="policeDate">날짜</label>
+              <input id="policeDate" type="date" />
+            </div>
+            <div>
+              <label for="policeTime">시간</label>
+              <input id="policeTime" type="time" />
+            </div>
+          </div>
+
+          <label for="policeCategory">구분</label>
+          <select id="policeCategory">
+            <option>강력</option>
+            <option>경범죄</option>
+            <option>청소년</option>
+            <option>재난</option>
+            <option>실종</option>
+            <option>교통사고</option>
+            <option>기타</option>
+          </select>
+
+          <label for="policeAgency">요청기관</label>
+          <select id="policeAgency">
+            <option>119</option>
+            <option>112</option>
+            <option>부평경찰서 / 역전지구대</option>
+            <option>부평경찰서 / 동암지구대</option>
+            <option>부평경찰서 / 철마지구대</option>
+            <option>부평경찰서 / 부평2파출소</option>
+            <option>부평경찰서 / 청천지구대</option>
+            <option>삼산경찰서 / 갈산지구대</option>
+            <option>삼산경찰서 / 부흥지구대</option>
+            <option>삼산경찰서 / 중앙지구대</option>
+            <option>삼산경찰서 / 부개파출소</option>
+            <option>삼산경찰서 / 부개2파출소</option>
+          </select>
+
+          <label for="policeManageNo">관리번호</label>
+          <input id="policeManageNo" type="text" />
+
+          <label for="policeLocation">주소 / 위치</label>
+          <input id="policeLocation" type="text" />
+
+          <label for="policeContent">내용</label>
+          <textarea id="policeContent" rows="4"></textarea>
+
+          <label for="policeAction">조치사항</label>
+          <textarea id="policeAction" rows="3"></textarea>
+
+          <label class="checkRow">
+            <input id="policeTeamSpecial" type="checkbox" />
+            <span>조특이사항에도 저장</span>
+          </label>
+
+          <button class="saveBtn" type="submit">저장</button>
+        </form>
+
+        <form id="formVideo" class="inputForm">
+          <div class="dateTimeRow">
+            <div>
+              <label for="videoDate">날짜</label>
+              <input id="videoDate" type="date" />
+            </div>
+            <div>
+              <label for="videoTime">시간</label>
+              <input id="videoTime" type="time" />
+            </div>
+          </div>
+
+          <label for="videoCategory">구분</label>
+          <select id="videoCategory">
+            <option>강도</option>
+            <option>폭력</option>
+            <option>절도</option>
+            <option>성추행</option>
+            <option>실종</option>
+            <option>교통사고</option>
+            <option>기타</option>
+          </select>
+
+          <label for="videoProcess">처리유형</label>
+          <select id="videoProcess">
+            <option>열람</option>
+            <option>복제</option>
+          </select>
+
+          <label for="videoContent">내용</label>
+          <textarea id="videoContent" rows="4"></textarea>
+
+          <label class="checkRow">
+            <input id="videoApprovalCheck" type="checkbox" />
+            <span>사후결재 정보 입력</span>
+          </label>
+
+          <div id="approvalFields" class="subFields hidden">
+            <label for="approvalVisitDateTime">방문일시</label>
+            <input id="approvalVisitDateTime" type="datetime-local" />
+
+            <label for="approvalOrg">소속기관</label>
+            <input id="approvalOrg" type="text" />
+
+            <label for="approvalRank">직급</label>
+            <input id="approvalRank" type="text" />
+
+            <label for="approvalName">이름</label>
+            <input id="approvalName" type="text" />
+
+            <label for="approvalPhone">연락처</label>
+            <input id="approvalPhone" type="text" />
+
+            <label for="approvalDocNo">공문번호</label>
+            <input id="approvalDocNo" type="text" />
+
+            <label for="approvalKeyword">공문제목키워드</label>
+            <input id="approvalKeyword" type="text" />
+
+            <label for="approvalContent">내용</label>
+            <textarea id="approvalContent" rows="3"></textarea>
+
+            <label class="checkRow">
+              <input id="approvalCompleted" type="checkbox" />
+              <span>접수완료</span>
+            </label>
+          </div>
+
+          <label class="checkRow">
+            <input id="videoDestroyCheck" type="checkbox" />
+            <span>파기공문 정보 입력</span>
+          </label>
+
+          <div id="destroyFields" class="subFields hidden">
+            <label for="destroyVisitDateTime">방문일시</label>
+            <input id="destroyVisitDateTime" type="datetime-local" />
+
+            <label for="destroyOrg">소속기관</label>
+            <input id="destroyOrg" type="text" />
+
+            <label for="destroyRank">직급</label>
+            <input id="destroyRank" type="text" />
+
+            <label for="destroyName">이름</label>
+            <input id="destroyName" type="text" />
+
+            <label for="destroyPhone">연락처</label>
+            <input id="destroyPhone" type="text" />
+
+            <label for="destroyDocNo">공문번호</label>
+            <input id="destroyDocNo" type="text" />
+
+            <label for="destroySendDocNo">발신공문번호</label>
+            <input id="destroySendDocNo" type="text" />
+
+            <label for="destroyContent">내용</label>
+            <textarea id="destroyContent" rows="3"></textarea>
+
+            <label class="checkRow">
+              <input id="destroyCompleted" type="checkbox" />
+              <span>접수완료</span>
+            </label>
+          </div>
+
+          <button class="saveBtn" type="submit">저장</button>
+        </form>
+
+        <form id="formInfo" class="inputForm">
+          <label for="infoReceiptDate">접수일</label>
+          <input id="infoReceiptDate" type="date" />
+
+          <label for="infoReceiptNo">접수번호</label>
+          <input id="infoReceiptNo" type="text" />
+
+          <label for="infoManageNo">관리번호</label>
+          <input id="infoManageNo" type="text" />
+
+          <label for="infoClaimantName">청구인이름</label>
+          <input id="infoClaimantName" type="text" />
+
+          <label for="infoClaimantPhone">청구인번호</label>
+          <input id="infoClaimantPhone" type="text" />
+
+          <label for="infoContent">청구내용</label>
+          <textarea id="infoContent" rows="4"></textarea>
+
+          <label for="infoNote">비고</label>
+          <textarea id="infoNote" rows="3"></textarea>
+
+          <button class="saveBtn" type="submit">저장</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

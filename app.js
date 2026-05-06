@@ -1,0 +1,1054 @@
+const APP_VERSION = "0.4.7";
+
+const SETTINGS_KEY = "cctv_settings_v4";
+const REALTIME_KEY = "cctv_realtime_records_v2";
+const CIVIL_KEY = "cctv_civil_records_v2";
+const POLICE_KEY = "cctv_police_records_v2";
+const VIDEO_KEY = "cctv_video_records_v2";
+const INFO_KEY = "cctv_info_records_v2";
+const PERSONAL_SPECIAL_KEY = "cctv_personal_specials_v2";
+const TEAM_SPECIAL_KEY = "cctv_team_specials_v2";
+const LAST_BACKUP_KEY = "cctv_last_backup_v2";
+
+const DEFAULT_TEAMS = {
+  "1조": [],
+  "2조": [],
+  "3조": [],
+  "4조": [],
+};
+
+const DEFAULT_SETTINGS = {
+  activeTeam: "1조",
+  currentUser: "",
+  theme: "ios-blue",
+  teamName: "1조",
+  teams: { ...DEFAULT_TEAMS },
+  members: [],
+  baseDate: "2026-04-01",
+  baseShift: "비번",
+  shiftPattern: ["비번", "휴무", "오전", "오전", "오후", "오후", "야간", "야간"],
+};
+
+const realtimeCategories = ["강력", "경범죄", "청소년", "재난", "교통사고", "기타"];
+const civilTypes = ["비상벨대응", "비상벨기타", "비상벨계도", "전화민원-나", "전화민원-대리"];
+const policeCategories = ["강력", "경범죄", "청소년", "재난", "실종", "교통사고", "기타"];
+const videoCategories = ["강도", "폭력", "절도", "성추행", "실종", "교통사고", "기타"];
+
+let settings = mergeSettings(readJson(SETTINGS_KEY, readJson("cctv_settings_v3", readJson("cctv_settings_v2", {}))));
+let realtimeRecords = readJson(REALTIME_KEY, []);
+let civilRecords = readJson(CIVIL_KEY, []);
+let policeRecords = readJson(POLICE_KEY, []);
+let videoRecords = readJson(VIDEO_KEY, []);
+let infoRecords = readJson(INFO_KEY, []);
+let personalSpecials = readJson(PERSONAL_SPECIAL_KEY, []);
+let teamSpecials = readJson(TEAM_SPECIAL_KEY, []);
+let lastBackup = readJson(LAST_BACKUP_KEY, null);
+
+let currentPeriodDate = new Date();
+
+const $ = (id) => document.getElementById(id);
+
+init();
+
+function init() {
+  bindTabs();
+  bindQuickAdd();
+  bindForms();
+  bindDynamicForms();
+  bindMonth();
+  bindBackup();
+  bindSettings();
+  applyTheme();
+  saveAll();
+  renderAll();
+}
+
+function readJson(key, fallback) {
+  try {
+    return JSON.parse(localStorage.getItem(key) || JSON.stringify(fallback));
+  } catch (error) {
+    return fallback;
+  }
+}
+
+function saveJson(key, value) {
+  localStorage.setItem(key, JSON.stringify(value));
+}
+
+function saveAll() {
+  saveJson(SETTINGS_KEY, settings);
+  saveJson(REALTIME_KEY, realtimeRecords);
+  saveJson(CIVIL_KEY, civilRecords);
+  saveJson(POLICE_KEY, policeRecords);
+  saveJson(VIDEO_KEY, videoRecords);
+  saveJson(INFO_KEY, infoRecords);
+  saveJson(PERSONAL_SPECIAL_KEY, personalSpecials);
+  saveJson(TEAM_SPECIAL_KEY, teamSpecials);
+}
+
+function mergeSettings(source) {
+  const next = { ...DEFAULT_SETTINGS, ...(source || {}) };
+
+  if (!Array.isArray(next.shiftPattern) || !next.shiftPattern.length) {
+    next.shiftPattern = [...DEFAULT_SETTINGS.shiftPattern];
+  }
+
+  if (!next.teams || typeof next.teams !== "object") {
+    next.teams = { ...DEFAULT_TEAMS };
+  }
+
+  Object.keys(DEFAULT_TEAMS).forEach((team) => {
+    if (!Array.isArray(next.teams[team])) next.teams[team] = [];
+  });
+
+  if (Array.isArray(next.members) && next.members.length && !next.teams[next.teamName || "1조"]?.length) {
+    const oldTeam = next.teamName || "1조";
+    next.teams[oldTeam] = next.members.slice(0, 4);
+  }
+
+  if (!next.activeTeam) next.activeTeam = next.teamName || "1조";
+  if (!next.teams[next.activeTeam]) next.activeTeam = "1조";
+
+  next.teamName = next.activeTeam;
+  next.members = next.teams[next.activeTeam] || [];
+
+  if (!next.theme) next.theme = "ios-blue";
+
+  if (!next.currentUser || !next.members.includes(next.currentUser)) {
+    next.currentUser = next.members[0] || "";
+  }
+
+  return next;
+}
+
+function makeId() {
+  return Date.now() + "_" + Math.random().toString(36).slice(2, 8);
+}
+
+function todayString() {
+  return dateString(new Date());
+}
+
+function dateString(date) {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
+function timeString() {
+  const d = new Date();
+  const h = String(d.getHours()).padStart(2, "0");
+  const m = String(d.getMinutes()).padStart(2, "0");
+  return `${h}:${m}`;
+}
+
+function ymString(date) {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  return `${y}-${m}`;
+}
+
+function yearString(date) {
+  return String(date.getFullYear());
+}
+
+function parseDateOnly(value) {
+  const safe = value || todayString();
+  const [y, m, d] = safe.split("-").map(Number);
+  return new Date(y, (m || 1) - 1, d || 1);
+}
+
+function getShift(date) {
+  const pattern = settings.shiftPattern.length ? settings.shiftPattern : DEFAULT_SETTINGS.shiftPattern;
+  const base = parseDateOnly(settings.baseDate);
+  const target = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  const diff = Math.floor((target - base) / (1000 * 60 * 60 * 24));
+  const baseIndex = Math.max(0, pattern.indexOf(settings.baseShift));
+  const index = ((baseIndex + diff) % pattern.length + pattern.length) % pattern.length;
+  return pattern[index];
+}
+
+function setShiftClass(shift) {
+  const el = $("headerShiftBadge");
+  el.className = "shiftBadge";
+  if (shift === "비번" || shift === "휴무") el.classList.add("off");
+  if (shift === "오전") el.classList.add("day");
+  if (shift === "오후") el.classList.add("evening");
+  if (shift === "야간") el.classList.add("night");
+}
+
+function formatHeaderDate() {
+  const d = new Date();
+  const days = ["일", "월", "화", "수", "목", "금", "토"];
+  return `${d.getFullYear()}.${d.getMonth() + 1}.${d.getDate()}(${days[d.getDay()]})`;
+}
+
+function formatDateTime(value) {
+  if (!value) return "-";
+  return value.replace("T", " ");
+}
+
+function bindTabs() {
+  document.querySelectorAll(".bottomTab").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      document.querySelectorAll(".bottomTab").forEach((b) => b.classList.remove("active"));
+      document.querySelectorAll(".page").forEach((p) => p.classList.remove("active"));
+      btn.classList.add("active");
+      $(btn.dataset.page).classList.add("active");
+      closeQuickDial();
+      renderAll();
+    });
+  });
+}
+
+function bindQuickAdd() {
+  $("quickAddBtn").addEventListener("click", () => {
+    $("quickDialWrap").classList.toggle("open");
+    $("quickBackdrop").classList.toggle("show");
+  });
+
+  $("quickBackdrop").addEventListener("click", closeQuickDial);
+
+  document.querySelectorAll(".dialItem").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      closeQuickDial();
+      openInputModal(btn.dataset.type);
+    });
+  });
+
+  $("closeInputModal").addEventListener("click", closeInputModal);
+}
+
+function closeQuickDial() {
+  $("quickDialWrap").classList.remove("open");
+  $("quickBackdrop").classList.remove("show");
+}
+
+function bindForms() {
+  $("formRealtime").addEventListener("submit", saveRealtimeRecord);
+  $("formCivil").addEventListener("submit", saveCivilRecord);
+  $("formPolice").addEventListener("submit", savePoliceRecord);
+  $("formVideo").addEventListener("submit", saveVideoRecord);
+  $("formInfo").addEventListener("submit", saveInfoRecord);
+}
+
+function bindDynamicForms() {
+  $("civilType").addEventListener("change", updateCivilFields);
+  $("civilPhoneOwner").addEventListener("change", updateCivilFields);
+  $("videoApprovalCheck").addEventListener("change", updateVideoFields);
+  $("videoDestroyCheck").addEventListener("change", updateVideoFields);
+}
+
+function bindMonth() {
+  $("prevPeriodBtn").addEventListener("click", () => {
+    const mode = $("periodMode").value;
+    if (mode === "month") currentPeriodDate.setMonth(currentPeriodDate.getMonth() - 1);
+    if (mode === "year") currentPeriodDate.setFullYear(currentPeriodDate.getFullYear() - 1);
+    syncPeriodInputs();
+    renderMonthPage();
+  });
+
+  $("nextPeriodBtn").addEventListener("click", () => {
+    const mode = $("periodMode").value;
+    if (mode === "month") currentPeriodDate.setMonth(currentPeriodDate.getMonth() + 1);
+    if (mode === "year") currentPeriodDate.setFullYear(currentPeriodDate.getFullYear() + 1);
+    syncPeriodInputs();
+    renderMonthPage();
+  });
+
+  $("periodMode").addEventListener("change", () => {
+    updatePeriodModeUi();
+    renderMonthPage();
+  });
+
+  $("periodMonthPicker").addEventListener("change", () => {
+    if (!$("periodMonthPicker").value) return;
+    const [y, m] = $("periodMonthPicker").value.split("-").map(Number);
+    currentPeriodDate = new Date(y, m - 1, 1);
+    renderMonthPage();
+  });
+
+  $("periodYearPicker").addEventListener("change", () => {
+    const y = Number($("periodYearPicker").value);
+    if (!y) return;
+    currentPeriodDate = new Date(y, 0, 1);
+    renderMonthPage();
+  });
+
+  $("exportExcelBtn").addEventListener("click", exportCurrentPeriodCsv);
+  $("exportPdfBtn").addEventListener("click", () => window.print());
+}
+
+function bindBackup() {
+  $("backupExportBtn").addEventListener("click", exportBackup);
+  $("backupImportInput").addEventListener("change", importBackup);
+}
+
+function bindSettings() {
+  $("saveShiftSettingBtn").addEventListener("click", saveShiftSettings);
+  $("resetShiftSettingBtn").addEventListener("click", resetShiftSettings);
+  $("saveTeamSettingBtn").addEventListener("click", saveTeamSettings);
+  $("saveThemeSettingBtn").addEventListener("click", saveThemeSettings);
+
+  $("themeSelect").addEventListener("change", () => {
+    settings.theme = $("themeSelect").value;
+    applyTheme();
+  });
+
+  $("editTeamSelect").addEventListener("change", () => {
+    fillTeamInputs($("editTeamSelect").value);
+  });
+
+  $("activeTeamSelect").addEventListener("change", () => {
+    const team = $("activeTeamSelect").value;
+    $("editTeamSelect").value = team;
+    fillTeamInputs(team);
+    populateCurrentUserSelect(team);
+  });
+}
+
+function renderAll() {
+  applyTheme();
+  renderHeader();
+  renderHomeSummary();
+  renderHomeDetails();
+  renderMonthPage();
+  renderBackupInfo();
+  renderSettings();
+}
+
+function renderHeader() {
+  const shift = getShift(new Date());
+  const members = settings.teams[settings.activeTeam] || [];
+  const user = settings.currentUser || members[0] || "사용자 미선택";
+
+  $("headerDateText").textContent = formatHeaderDate();
+  $("headerShiftBadge").textContent = shift;
+  $("headerTeamName").textContent = settings.activeTeam;
+  $("headerUserName").textContent = user;
+  $("versionText").textContent = `현재버전 ${APP_VERSION}`;
+
+  setShiftClass(shift);
+}
+
+function renderSettings() {
+  $("settingBaseDate").value = settings.baseDate;
+  $("settingBaseShift").value = settings.baseShift;
+  $("settingShiftPattern").value = settings.shiftPattern.join(",");
+
+  $("activeTeamSelect").value = settings.activeTeam;
+  $("editTeamSelect").value = $("editTeamSelect").value || settings.activeTeam;
+  $("themeSelect").value = settings.theme || "ios-blue";
+
+  fillTeamInputs($("editTeamSelect").value);
+  populateCurrentUserSelect(settings.activeTeam);
+  renderTeamPreview();
+  syncPeriodInputs();
+  updatePeriodModeUi();
+}
+
+function fillTeamInputs(team) {
+  const members = settings.teams[team] || [];
+  $("teamMember1").value = members[0] || "";
+  $("teamMember2").value = members[1] || "";
+  $("teamMember3").value = members[2] || "";
+  $("teamMember4").value = members[3] || "";
+}
+
+function populateCurrentUserSelect(team) {
+  const select = $("currentUserSelect");
+  const members = settings.teams[team] || [];
+
+  if (!members.length) {
+    select.innerHTML = '<option value="">조원 없음</option>';
+    select.value = "";
+    return;
+  }
+
+  select.innerHTML = members
+    .map((member) => `<option value="${escapeHtml(member)}">${escapeHtml(member)}</option>`)
+    .join("");
+
+  if (members.includes(settings.currentUser)) {
+    select.value = settings.currentUser;
+  } else {
+    select.value = members[0];
+  }
+}
+
+function applyTheme() {
+  document.body.dataset.theme = settings.theme || "ios-blue";
+}
+
+function renderTeamPreview() {
+  $("allTeamsPreview").innerHTML = Object.keys(DEFAULT_TEAMS)
+    .map((team) => {
+      const members = settings.teams[team] || [];
+      return `
+        <div class="teamPreviewLine">
+          <span>${escapeHtml(team)}</span>
+          <strong>${escapeHtml(members.join(", ") || "미입력")}</strong>
+        </div>
+      `;
+    })
+    .join("");
+}
+
+function syncPeriodInputs() {
+  $("periodMonthPicker").value = ymString(currentPeriodDate);
+  $("periodYearPicker").value = currentPeriodDate.getFullYear();
+}
+
+function updatePeriodModeUi() {
+  const mode = $("periodMode").value;
+  $("periodMonthPicker").classList.toggle("hidden", mode !== "month");
+  $("periodYearPicker").classList.toggle("hidden", mode !== "year");
+}
+
+function renderHomeSummary() {
+  const today = todayString();
+  const ym = ymString(new Date());
+  renderRealtimeSummary("realtimeSummaryTable", today, ym);
+  renderCivilSummary("civilSummaryTable", today, ym);
+  renderPoliceSummary("policeSummaryTable", today, ym);
+  renderVideoSummary("videoSummaryTable", today, ym);
+  renderInfoSummary("infoSummaryTable", today, ym);
+}
+
+function renderRealtimeSummary(tableId, today, ym) {
+  const todayValues = realtimeCategories.map((c) => realtimeRecords.filter((r) => r.date === today && r.category === c).length);
+  const monthValues = realtimeCategories.map((c) => realtimeRecords.filter((r) => r.date.startsWith(ym) && r.category === c).length);
+  renderMatrixTable(tableId, realtimeCategories, [["오늘", ...todayValues, sum(todayValues)]]);
+  setMonthHint("realtimeMonthHint", `이번달 누계 <strong>${sum(monthValues)}</strong>건`);
+}
+
+function renderCivilSummary(tableId, today, ym) {
+  const todayValues = civilTypes.map((label) => countCivilByLabel(today, label));
+  const monthValues = civilTypes.map((label) => countCivilByMonthLabel(ym, label));
+  renderMatrixTable(tableId, civilTypes, [["오늘", ...todayValues, sum(todayValues)]]);
+  setMonthHint("civilMonthHint", `이번달 누계 <strong>${sum(monthValues)}</strong>건`);
+}
+
+function renderPoliceSummary(tableId, today, ym) {
+  const todayValues = policeCategories.map((c) => policeRecords.filter((r) => r.date === today && r.category === c).length);
+  const monthValues = policeCategories.map((c) => policeRecords.filter((r) => r.date.startsWith(ym) && r.category === c).length);
+  renderMatrixTable(tableId, policeCategories, [["오늘", ...todayValues, sum(todayValues)]]);
+  setMonthHint("policeMonthHint", `이번달 누계 <strong>${sum(monthValues)}</strong>건`);
+}
+
+function renderVideoSummary(tableId, today, ym) {
+  const todayValues = videoCategories.map((c) => formatVideoCount(videoRecords.filter((r) => r.date === today && r.category === c)));
+  const monthValues = videoCategories.map((c) => formatVideoCount(videoRecords.filter((r) => r.date.startsWith(ym) && r.category === c)));
+  renderMatrixTable(tableId, videoCategories, [
+    ["오늘", ...todayValues, formatVideoCount(videoRecords.filter((r) => r.date === today))],
+  ]);
+  setMonthHint("videoMonthHint", `이번달 누계 <strong>${cellHtml(formatVideoCount(videoRecords.filter((r) => r.date.startsWith(ym))))}</strong>`);
+}
+
+function renderInfoSummary(tableId, today, ym) {
+  const todayCount = infoRecords.filter((r) => r.date === today).length;
+  const monthCount = infoRecords.filter((r) => r.date.startsWith(ym)).length;
+  renderTable(tableId, ["오늘"], [[todayCount]], [0]);
+  setMonthHint("infoMonthHint", `이번달 누계 <strong>${monthCount}</strong>건`);
+}
+
+function setMonthHint(id, html) {
+  const el = $(id);
+  if (el) el.innerHTML = html;
+}
+
+function countCivilByLabel(date, label) {
+  return civilRecords.filter((r) => {
+    if (r.date !== date) return false;
+    if (label === "전화민원-나") return r.type === "전화민원" && r.phoneOwner === "나";
+    if (label === "전화민원-대리") return r.type === "전화민원" && r.phoneOwner === "대리";
+    return r.type === label;
+  }).length;
+}
+
+function countCivilByMonthLabel(ym, label) {
+  return civilRecords.filter((r) => {
+    if (!r.date.startsWith(ym)) return false;
+    if (label === "전화민원-나") return r.type === "전화민원" && r.phoneOwner === "나";
+    if (label === "전화민원-대리") return r.type === "전화민원" && r.phoneOwner === "대리";
+    return r.type === label;
+  }).length;
+}
+
+function formatVideoCount(list) {
+  const view = list.filter((r) => r.process === "열람").length;
+  const copy = list.filter((r) => r.process === "복제").length;
+  return {
+    html: `${list.length}(<span class="viewCount">${view}</span>/<span class="copyCount">${copy}</span>)`,
+  };
+}
+
+function renderHomeDetails() {
+  const today = todayString();
+
+  renderTable("realtimeTodayTable", ["번호", "시간", "관리번호", "위치", "구분", "내용", "비고"],
+    realtimeRecords.filter((r) => r.date === today).map((r, idx) => [idx + 1, `${r.startTime || "-"}~${r.endTime || "-"}`, r.manageNo, r.location, r.category, r.content, r.note]), [0]);
+
+  renderTable("policeTodayTable", ["번호", "시간", "구분", "요청기관", "관리번호", "주소/위치", "내용", "조치사항"],
+    policeRecords.filter((r) => r.date === today).map((r, idx) => [idx + 1, r.time, r.category, r.agency, r.manageNo, r.location, r.content, r.action]), [0]);
+
+  renderTable("civilTodayTable", ["번호", "시간", "민원종류", "민원인정보", "관리번호", "위치", "민원내용", "조치사항"],
+    civilRecords.filter((r) => r.date === today).map((r, idx) => [idx + 1, r.time, civilTitle(r), r.complainantInfo, r.manageNo, r.location, r.content, r.action]), [0]);
+
+  renderApprovalHome();
+  renderDestroyHome();
+}
+
+function renderApprovalHome() {
+  const rows = videoRecords.filter((r) => r.approval && !r.approval.completed).map((r, idx) => [
+    idx + 1, formatDateTime(r.approval.visitDateTime), r.approval.org, r.approval.rank, r.approval.name,
+    r.approval.phone, r.approval.docNo, r.approval.keyword, r.approval.content,
+  ]);
+  renderTable("approvalHomeTable", ["번호", "방문일시", "소속기관", "직급", "이름", "연락처", "공문번호", "공문제목키워드", "내용"], rows, [0]);
+}
+
+function renderDestroyHome() {
+  const rows = videoRecords.filter((r) => r.destroy && !r.destroy.completed).map((r, idx) => [
+    idx + 1, formatDateTime(r.destroy.visitDateTime), r.destroy.org, r.destroy.rank, r.destroy.name,
+    r.destroy.phone, r.destroy.docNo, r.destroy.sendDocNo, r.destroy.content,
+  ]);
+  renderTable("destroyHomeTable", ["번호", "방문일시", "소속기관", "직급", "이름", "연락처", "공문번호", "발신공문번호", "내용"], rows, [0]);
+}
+
+function civilTitle(r) {
+  if (r.type === "전화민원") return `전화민원-${r.phoneOwner || "나"}`;
+  return r.type;
+}
+
+function renderMonthPage() {
+  const key = getPeriodKey();
+  renderMonthlyDaily(key);
+  renderMonthlyPolice(key);
+  renderMonthlyVideo(key);
+  renderMonthlyCivil(key);
+  renderMonthlyInfo(key);
+  renderMonthlyRealtime(key);
+  renderMonthlySpecials(key);
+  renderMonthlyDocs(key);
+}
+
+function getPeriodKey() {
+  return $("periodMode").value === "month" ? ymString(currentPeriodDate) : yearString(currentPeriodDate);
+}
+
+function renderMonthlyDaily(key) {
+  const dates = new Set();
+
+  [...realtimeRecords, ...civilRecords, ...policeRecords, ...videoRecords, ...infoRecords].forEach((record) => {
+    if (record.date && record.date.startsWith(key)) dates.add(record.date);
+  });
+
+  const rows = Array.from(dates)
+    .sort()
+    .reverse()
+    .map((date) => [
+      date.slice(5),
+      realtimeRecords.filter((r) => r.date === date).length,
+      civilRecords.filter((r) => r.date === date).length,
+      policeRecords.filter((r) => r.date === date).length,
+      videoRecords.filter((r) => r.date === date).length,
+      infoRecords.filter((r) => r.date === date).length,
+    ]);
+
+  renderTable("monthDailyTable", ["날짜", "실적", "민원", "경찰", "영상", "정보"], rows, [1, 2, 3, 4, 5]);
+}
+
+function renderMonthlyPolice(key) {
+  const values = policeCategories.map((c) => policeRecords.filter((r) => r.date.startsWith(key) && r.category === c).length);
+  renderMatrixTable("monthPoliceTable", policeCategories, [["누계", ...values, sum(values)]]);
+}
+
+function renderMonthlyVideo(key) {
+  const values = videoCategories.map((c) => formatVideoCount(videoRecords.filter((r) => r.date.startsWith(key) && r.category === c)));
+  renderMatrixTable("monthVideoTable", videoCategories, [["누계", ...values, formatVideoCount(videoRecords.filter((r) => r.date.startsWith(key)))]]); 
+}
+
+function renderMonthlyCivil(key) {
+  const values = civilTypes.map((label) => countCivilByPeriodLabel(key, label));
+  renderMatrixTable("monthCivilTable", civilTypes, [["누계", ...values, sum(values)]]);
+}
+
+function renderMonthlyInfo(key) {
+  const count = infoRecords.filter((r) => r.date.startsWith(key)).length;
+  renderTable("monthInfoTable", ["누계"], [[count]], [0]);
+}
+
+function renderMonthlyRealtime(key) {
+  const values = realtimeCategories.map((c) => realtimeRecords.filter((r) => r.date.startsWith(key) && r.category === c).length);
+  renderMatrixTable("monthRealtimeTable", realtimeCategories, [["누계", ...values, sum(values)]]);
+}
+
+function countCivilByPeriodLabel(key, label) {
+  return civilRecords.filter((r) => {
+    if (!r.date.startsWith(key)) return false;
+    if (label === "전화민원-나") return r.type === "전화민원" && r.phoneOwner === "나";
+    if (label === "전화민원-대리") return r.type === "전화민원" && r.phoneOwner === "대리";
+    return r.type === label;
+  }).length;
+}
+
+function renderMonthlySpecials(key) {
+  renderTable("monthPersonalSpecialTable", ["번호", "날짜", "구분", "관리번호", "위치", "내용", "비고"],
+    personalSpecials.filter((r) => r.date.startsWith(key)).map((r, idx) => [idx + 1, r.date, r.category, r.manageNo, r.location, r.content, r.note]), [0]);
+  renderTable("monthTeamSpecialTable", ["번호", "날짜", "시간", "구분", "요청기관", "관리번호", "내용", "조치사항"],
+    teamSpecials.filter((r) => r.date.startsWith(key)).map((r, idx) => [idx + 1, r.date, r.time, r.category, r.agency, r.manageNo, r.content, r.action]), [0]);
+}
+
+function renderMonthlyDocs(key) {
+  renderTable("monthApprovalTable", ["번호", "상태", "방문일시", "소속기관", "직급", "이름", "연락처", "공문번호", "키워드", "내용"],
+    videoRecords.filter((r) => r.date.startsWith(key) && r.approval).map((r, idx) => [
+      idx + 1, r.approval.completed ? "접수완료" : "대기", formatDateTime(r.approval.visitDateTime), r.approval.org,
+      r.approval.rank, r.approval.name, r.approval.phone, r.approval.docNo, r.approval.keyword, r.approval.content,
+    ]), [0]);
+
+  renderTable("monthDestroyTable", ["번호", "상태", "방문일시", "소속기관", "직급", "이름", "연락처", "공문번호", "발신공문번호", "내용"],
+    videoRecords.filter((r) => r.date.startsWith(key) && r.destroy).map((r, idx) => [
+      idx + 1, r.destroy.completed ? "접수완료" : "대기", formatDateTime(r.destroy.visitDateTime), r.destroy.org,
+      r.destroy.rank, r.destroy.name, r.destroy.phone, r.destroy.docNo, r.destroy.sendDocNo, r.destroy.content,
+    ]), [0]);
+}
+
+function openInputModal(type) {
+  document.querySelectorAll(".inputForm").forEach((form) => {
+    form.classList.remove("active");
+    form.reset();
+  });
+
+  const today = todayString();
+  const now = timeString();
+
+  if (type === "realtime") {
+    $("modalTitle").textContent = "실시간실적 입력";
+    $("formRealtime").classList.add("active");
+    $("rtDate").value = today;
+    $("rtStartTime").value = now;
+  }
+
+  if (type === "civil") {
+    $("modalTitle").textContent = "민원처리 입력";
+    $("formCivil").classList.add("active");
+    $("civilDate").value = today;
+    $("civilTime").value = now;
+    updateCivilFields();
+  }
+
+  if (type === "police") {
+    $("modalTitle").textContent = "경찰관제요청 입력";
+    $("formPolice").classList.add("active");
+    $("policeDate").value = today;
+    $("policeTime").value = now;
+  }
+
+  if (type === "video") {
+    $("modalTitle").textContent = "영상열람반출 입력";
+    $("formVideo").classList.add("active");
+    $("videoDate").value = today;
+    $("videoTime").value = now;
+    updateVideoFields();
+  }
+
+  if (type === "info") {
+    $("modalTitle").textContent = "정보공개 입력";
+    $("formInfo").classList.add("active");
+    $("infoReceiptDate").value = today;
+  }
+
+  $("inputModal").classList.add("show");
+}
+
+function closeInputModal() {
+  $("inputModal").classList.remove("show");
+}
+
+function updateCivilFields() {
+  const type = $("civilType").value;
+  const owner = $("civilPhoneOwner").value;
+  show("civilPhoneOwnerGroup", type === "전화민원");
+  show("civilProxyGroup", type === "전화민원" && owner === "대리");
+  show("civilComplainantGroup", type === "전화민원");
+  show("civilManageGroup", true);
+  show("civilLocationGroup", type === "비상벨대응" || type === "비상벨계도");
+  show("civilContentGroup", true);
+  show("civilActionGroup", type === "비상벨대응" || type === "전화민원");
+}
+
+function updateVideoFields() {
+  show("approvalFields", $("videoApprovalCheck").checked);
+  show("destroyFields", $("videoDestroyCheck").checked);
+}
+
+function show(id, visible) {
+  $(id).classList.toggle("hidden", !visible);
+}
+
+function saveRealtimeRecord(e) {
+  e.preventDefault();
+  const record = {
+    id: makeId(),
+    date: $("rtDate").value || todayString(),
+    startTime: $("rtStartTime").value,
+    endTime: $("rtEndTime").value,
+    manageNo: $("rtManageNo").value.trim(),
+    location: $("rtLocation").value.trim(),
+    category: $("rtCategory").value,
+    content: $("rtContent").value.trim(),
+    note: $("rtNote").value.trim(),
+    createdAt: new Date().toISOString(),
+  };
+  realtimeRecords.push(record);
+  if ($("rtPersonalSpecial").checked) personalSpecials.push({ ...record, id: makeId(), sourceId: record.id });
+  saveAll();
+  closeInputModal();
+  renderAll();
+}
+
+function saveCivilRecord(e) {
+  e.preventDefault();
+  civilRecords.push({
+    id: makeId(),
+    date: $("civilDate").value || todayString(),
+    time: $("civilTime").value || timeString(),
+    type: $("civilType").value,
+    phoneOwner: $("civilType").value === "전화민원" ? $("civilPhoneOwner").value : "",
+    proxyMember: $("civilType").value === "전화민원" ? $("civilProxyMember").value.trim() : "",
+    complainantInfo: $("civilComplainantInfo").value.trim(),
+    manageNo: $("civilManageNo").value.trim(),
+    location: $("civilLocation").value.trim(),
+    content: $("civilContent").value.trim(),
+    action: $("civilAction").value.trim(),
+    createdAt: new Date().toISOString(),
+  });
+  saveAll();
+  closeInputModal();
+  renderAll();
+}
+
+function savePoliceRecord(e) {
+  e.preventDefault();
+  const record = {
+    id: makeId(),
+    date: $("policeDate").value || todayString(),
+    time: $("policeTime").value || timeString(),
+    category: $("policeCategory").value,
+    agency: $("policeAgency").value,
+    manageNo: $("policeManageNo").value.trim(),
+    location: $("policeLocation").value.trim(),
+    content: $("policeContent").value.trim(),
+    action: $("policeAction").value.trim(),
+    createdAt: new Date().toISOString(),
+  };
+  policeRecords.push(record);
+  if ($("policeTeamSpecial").checked) teamSpecials.push({ ...record, id: makeId(), sourceId: record.id });
+  saveAll();
+  closeInputModal();
+  renderAll();
+}
+
+function saveVideoRecord(e) {
+  e.preventDefault();
+  const record = {
+    id: makeId(),
+    date: $("videoDate").value || todayString(),
+    time: $("videoTime").value || timeString(),
+    category: $("videoCategory").value,
+    process: $("videoProcess").value,
+    content: $("videoContent").value.trim(),
+    approval: null,
+    destroy: null,
+    createdAt: new Date().toISOString(),
+  };
+
+  if ($("videoApprovalCheck").checked) {
+    record.approval = {
+      visitDateTime: $("approvalVisitDateTime").value,
+      org: $("approvalOrg").value.trim(),
+      rank: $("approvalRank").value.trim(),
+      name: $("approvalName").value.trim(),
+      phone: $("approvalPhone").value.trim(),
+      docNo: $("approvalDocNo").value.trim(),
+      keyword: $("approvalKeyword").value.trim(),
+      content: $("approvalContent").value.trim(),
+      completed: $("approvalCompleted").checked,
+    };
+  }
+
+  if ($("videoDestroyCheck").checked) {
+    record.destroy = {
+      visitDateTime: $("destroyVisitDateTime").value,
+      org: $("destroyOrg").value.trim(),
+      rank: $("destroyRank").value.trim(),
+      name: $("destroyName").value.trim(),
+      phone: $("destroyPhone").value.trim(),
+      docNo: $("destroyDocNo").value.trim(),
+      sendDocNo: $("destroySendDocNo").value.trim(),
+      content: $("destroyContent").value.trim(),
+      completed: $("destroyCompleted").checked,
+    };
+  }
+
+  videoRecords.push(record);
+  saveAll();
+  closeInputModal();
+  renderAll();
+}
+
+function saveInfoRecord(e) {
+  e.preventDefault();
+  infoRecords.push({
+    id: makeId(),
+    date: $("infoReceiptDate").value || todayString(),
+    receiptNo: $("infoReceiptNo").value.trim(),
+    manageNo: $("infoManageNo").value.trim(),
+    claimantName: $("infoClaimantName").value.trim(),
+    claimantPhone: $("infoClaimantPhone").value.trim(),
+    content: $("infoContent").value.trim(),
+    note: $("infoNote").value.trim(),
+    createdAt: new Date().toISOString(),
+  });
+  saveAll();
+  closeInputModal();
+  renderAll();
+}
+
+function parseListText(value) {
+  return String(value || "")
+    .replace(/->/g, ",")
+    .replace(/→/g, ",")
+    .replace(/>/g, ",")
+    .split(/[,\n]/)
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function saveShiftSettings() {
+  const baseDate = $("settingBaseDate").value;
+  const baseShift = $("settingBaseShift").value;
+  const pattern = parseListText($("settingShiftPattern").value);
+  const allowed = ["오전", "오후", "야간", "비번", "휴무"];
+  const invalid = pattern.filter((item) => !allowed.includes(item));
+
+  if (!baseDate) return alert("기준일을 선택해주세요.");
+  if (!pattern.length) return alert("근무패턴을 입력해주세요.");
+  if (invalid.length) return alert(`사용할 수 없는 근무명이 있습니다: ${invalid.join(", ")}`);
+  if (!pattern.includes(baseShift)) return alert("근무패턴 안에 기준일 근무가 포함되어야 합니다.");
+
+  settings.baseDate = baseDate;
+  settings.baseShift = baseShift;
+  settings.shiftPattern = pattern;
+  saveAll();
+  renderAll();
+  alert("근무패턴이 저장되었습니다.");
+}
+
+function resetShiftSettings() {
+  if (!confirm("근무패턴을 기본값으로 되돌릴까요?")) return;
+  settings.baseDate = DEFAULT_SETTINGS.baseDate;
+  settings.baseShift = DEFAULT_SETTINGS.baseShift;
+  settings.shiftPattern = [...DEFAULT_SETTINGS.shiftPattern];
+  saveAll();
+  renderAll();
+  alert("근무패턴이 초기화되었습니다.");
+}
+
+function saveTeamSettings() {
+  const activeTeam = $("activeTeamSelect").value;
+  const editTeam = $("editTeamSelect").value;
+
+  const members = [
+    $("teamMember1").value.trim(),
+    $("teamMember2").value.trim(),
+    $("teamMember3").value.trim(),
+    $("teamMember4").value.trim(),
+  ].filter(Boolean);
+
+  settings.teams[editTeam] = members;
+  settings.activeTeam = activeTeam;
+  settings.teamName = activeTeam;
+  settings.members = settings.teams[activeTeam] || [];
+
+  const activeMembers = activeTeam === editTeam ? members : settings.members;
+  const selectedUser = $("currentUserSelect").value;
+  settings.currentUser = activeMembers.includes(selectedUser) ? selectedUser : (activeMembers[0] || "");
+
+  saveAll();
+  renderAll();
+  alert("조 정보가 저장되었습니다.");
+}
+
+function saveThemeSettings() {
+  settings.theme = $("themeSelect").value || "ios-blue";
+  saveAll();
+  applyTheme();
+  alert("테마가 저장되었습니다.");
+}
+
+function createBackupPayload() {
+  return {
+    meta: { app: "CCTV Manager", version: APP_VERSION, exportedAt: new Date().toISOString() },
+    settings,
+    realtimeRecords,
+    civilRecords,
+    policeRecords,
+    videoRecords,
+    infoRecords,
+    personalSpecials,
+    teamSpecials,
+  };
+}
+
+function exportBackup() {
+  const payload = createBackupPayload();
+  downloadTextFile(`cctv-manager-backup-${todayString()}.json`, JSON.stringify(payload, null, 2), "application/json");
+  lastBackup = { exportedAt: payload.meta.exportedAt, version: APP_VERSION };
+  saveJson(LAST_BACKUP_KEY, lastBackup);
+  renderBackupInfo();
+}
+
+function importBackup(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+
+  reader.onload = () => {
+    try {
+      const parsed = JSON.parse(reader.result);
+      if (!confirm("백업 파일을 복원할까요? 현재 데이터는 백업 내용으로 교체됩니다.")) {
+        e.target.value = "";
+        return;
+      }
+      settings = mergeSettings(parsed.settings || {});
+      realtimeRecords = ensureIds(parsed.realtimeRecords || []);
+      civilRecords = ensureIds(parsed.civilRecords || []);
+      policeRecords = ensureIds(parsed.policeRecords || []);
+      videoRecords = ensureIds(parsed.videoRecords || []);
+      infoRecords = ensureIds(parsed.infoRecords || []);
+      personalSpecials = ensureIds(parsed.personalSpecials || []);
+      teamSpecials = ensureIds(parsed.teamSpecials || []);
+      saveAll();
+      renderAll();
+      alert("복원이 완료되었습니다.");
+    } catch (error) {
+      alert("백업 파일을 읽을 수 없습니다.");
+    } finally {
+      e.target.value = "";
+    }
+  };
+
+  reader.readAsText(file);
+}
+
+function ensureIds(list) {
+  return list.map((item) => ({ ...item, id: item.id || makeId() }));
+}
+
+function renderBackupInfo() {
+  if (!lastBackup) {
+    $("backupText").textContent = "백업 정보 없음";
+    return;
+  }
+  $("backupText").textContent = `최근 백업: ${formatDateTime(lastBackup.exportedAt)} / ${lastBackup.version}`;
+}
+
+function exportCurrentPeriodCsv() {
+  const key = getPeriodKey();
+  const lines = [];
+  lines.push(["구분", "날짜", "항목", "내용"].join(","));
+  collectPeriodItems(key).forEach(({ group, item }) => {
+    lines.push([csv(group), csv(item.date || ""), csv(item.category || item.type || item.process || ""), csv(summaryText(item))].join(","));
+  });
+  downloadTextFile(`cctv-period-${key}.csv`, "\uFEFF" + lines.join("\n"), "text/csv");
+}
+
+function downloadTextFile(filename, content, type) {
+  const blob = new Blob([content], { type });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function csv(value) {
+  return `"${String(value ?? "").replaceAll('"', '""')}"`;
+}
+
+function collectPeriodItems(key) {
+  return [
+    ...realtimeRecords.filter((r) => r.date.startsWith(key)).map((item) => ({ group: "실시간실적", item })),
+    ...civilRecords.filter((r) => r.date.startsWith(key)).map((item) => ({ group: "민원처리", item })),
+    ...policeRecords.filter((r) => r.date.startsWith(key)).map((item) => ({ group: "경찰관제요청", item })),
+    ...videoRecords.filter((r) => r.date.startsWith(key)).map((item) => ({ group: "영상열람반출", item })),
+    ...infoRecords.filter((r) => r.date.startsWith(key)).map((item) => ({ group: "정보공개", item })),
+    ...personalSpecials.filter((r) => r.date.startsWith(key)).map((item) => ({ group: "개인특이사항", item })),
+    ...teamSpecials.filter((r) => r.date.startsWith(key)).map((item) => ({ group: "조특이사항", item })),
+  ];
+}
+
+function summaryText(item) {
+  return [item.time, item.startTime && item.endTime ? `${item.startTime}~${item.endTime}` : "", item.manageNo, item.location, item.agency, item.complainantInfo, item.content, item.action, item.note].filter(Boolean).join(" · ");
+}
+
+function sum(values) {
+  return values.reduce((total, value) => total + Number(value || 0), 0);
+}
+
+function renderMatrixTable(tableId, categories, rows) {
+  const headers = ["구분", ...categories, "합계"];
+  const table = $(tableId);
+  table.innerHTML = `
+    <thead>
+      <tr>${headers.map((header, idx) => `<th class="${idx === 0 ? "" : "num"}">${escapeHtml(header)}</th>`).join("")}</tr>
+    </thead>
+    <tbody>
+      ${rows.map((row) => `
+        <tr class="${row[0] === "월누계" || row[0] === "누계" ? "total" : ""}">
+          ${row.map((cell, idx) => `<td class="${idx === 0 ? "matrixRowHead" : "num"}">${cellHtml(cell)}</td>`).join("")}
+        </tr>
+      `).join("")}
+    </tbody>
+  `;
+}
+
+function renderTable(tableId, headers, rows, numericIndexes = []) {
+  const table = $(tableId);
+  if (!rows.length) {
+    table.innerHTML = `
+      <thead><tr>${headers.map((h) => `<th>${escapeHtml(h)}</th>`).join("")}</tr></thead>
+      <tbody><tr><td class="emptyCell" colspan="${headers.length}">기록 없음</td></tr></tbody>
+    `;
+    return;
+  }
+  table.innerHTML = `
+    <thead>
+      <tr>${headers.map((h, idx) => `<th class="${numericIndexes.includes(idx) ? "num" : ""}">${escapeHtml(h)}</th>`).join("")}</tr>
+    </thead>
+    <tbody>
+      ${rows.map((row) => `
+        <tr class="${String(row[0]).includes("합계") ? "total" : ""}">
+          ${row.map((cell, idx) => `<td class="${numericIndexes.includes(idx) ? "num" : ""}">${cellHtml(cell)}</td>`).join("")}
+        </tr>
+      `).join("")}
+    </tbody>
+  `;
+}
+
+function cellHtml(value) {
+  if (value && typeof value === "object" && "html" in value) return value.html;
+  return escapeHtml(value);
+}
+
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
