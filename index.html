@@ -155,6 +155,32 @@
       </div>
     </section>
 
+
+    <section id="mapPage" class="page">
+      <section class="sectionTitle firstTitle">
+        <h2>지도</h2>
+      </section>
+
+      <div class="mapPanel">
+        <div class="mapSearchBox">
+          <input id="mapSearchInput" type="search" placeholder="장소 또는 주소 검색" />
+          <button id="mapSearchBtn" type="button">검색</button>
+        </div>
+
+        <div id="mapCanvas" class="mapCanvas">
+          <div class="mapLoading">지도를 불러오는 중입니다.</div>
+        </div>
+
+        <div class="mapActionRow">
+          <button id="mapCurrentBtn" type="button">부평구청</button>
+          <button id="mapOpenExternalBtn" type="button">카카오맵 열기</button>
+        </div>
+
+        <div id="mapStatusText" class="mapStatusText">검색어를 입력하면 지도에서 위치를 찾을 수 있습니다.</div>
+        <div id="mapResultList" class="mapResultList"></div>
+      </div>
+    </section>
+
     <section id="managePage" class="page">
       <div class="panel">
         <h2>근무 / 조 관리</h2>
@@ -243,15 +269,7 @@
             <option value="ios-lavender">라벤더</option>
             <option value="ios-graphite">그래파이트</option>
           </select>
-
-          <label for="displayModeSelect">화면 모드</label>
-          <select id="displayModeSelect">
-            <option value="system">시스템 자동</option>
-            <option value="light">라이트 모드</option>
-            <option value="dark">다크 모드</option>
-          </select>
-
-          <div class="themePreviewGrid">
+<div class="themePreviewGrid">
             <div class="themePreview themeBlue"><span></span><strong>iOS 블루</strong></div>
             <div class="themePreview themeSage"><span></span><strong>세이지</strong></div>
             <div class="themePreview themeLavender"><span></span><strong>라벤더</strong></div>
@@ -323,7 +341,7 @@
       <strong>월현황</strong>
     </button>
 
-    <button class="bottomTab" type="button" data-map-url="true">
+    <button class="bottomTab" type="button" data-page="mapPage">
       <span class="tabIcon iconMap"></span>
       <strong>지도</strong>
     </button>
@@ -653,6 +671,7 @@
     </div>
   </div>
 
+  <script src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=e21597a0eebbb3884d925f38a48b41f4&libraries=services&autoload=false"></script>
   <script src="app.js"></script>
 </body>
 </html>

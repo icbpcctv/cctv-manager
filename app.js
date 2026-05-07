@@ -1,5 +1,7 @@
-const APP_VERSION = "0.5.3";
-const MAP_URL = "https://gis.icbp.go.kr/portal/apps/sites/#/bp-home/apps/8e2e8a3d6e3f4e59bf9ea54c22e5c516/explore";
+const APP_VERSION = "0.5.6";
+const KAKAO_EXTERNAL_MAP_URL = "https://map.kakao.com/";
+const DEFAULT_MAP_CENTER = { lat: 37.5070, lng: 126.7218 };
+const DEFAULT_MAP_LABEL = "부평구청";
 
 const SETTINGS_KEY = "cctv_settings_v4";
 const REALTIME_KEY = "cctv_realtime_records_v2";
@@ -22,7 +24,6 @@ const DEFAULT_SETTINGS = {
   activeTeam: "1조",
   currentUser: "",
   theme: "ios-blue",
-  appearance: "system",
   teamName: "1조",
   teams: { ...DEFAULT_TEAMS },
   members: [],
@@ -48,6 +49,12 @@ let lastBackup = readJson(LAST_BACKUP_KEY, null);
 
 let currentPeriodDate = new Date();
 let editState = null;
+let kakaoMap = null;
+let kakaoMarker = null;
+let kakaoInfoWindow = null;
+let kakaoPlaces = null;
+let kakaoGeocoder = null;
+let kakaoMapReady = false;
 
 const $ = (id) => document.getElementById(id);
 
@@ -55,8 +62,8 @@ init();
 
 function init() {
   bindTabs();
-  bindMapTab();
   bindQuickAdd();
+  bindMapControls();
   bindListModal();
   bindForms();
   bindDynamicForms();
@@ -118,7 +125,6 @@ function mergeSettings(source) {
   next.members = next.teams[next.activeTeam] || [];
 
   if (!next.theme) next.theme = "ios-blue";
-  if (!next.appearance) next.appearance = "system";
 
   if (!next.currentUser || !next.members.includes(next.currentUser)) {
     next.currentUser = next.members[0] || "";
@@ -209,21 +215,207 @@ function bindTabs() {
 
       closeQuickDial();
       renderAll();
+
+      if (page === "mapPage") {
+        setTimeout(initMapPage, 80);
+      }
     });
   });
 }
 
-function bindMapTab() {
-  document.querySelectorAll("[data-map-url]").forEach((btn) => {
-    btn.addEventListener("click", (event) => {
-      event.preventDefault();
-      closeQuickDial();
 
-      const opened = window.open(MAP_URL, "_blank", "noopener,noreferrer");
-      if (!opened) location.href = MAP_URL;
+function bindMapControls() {
+  const searchBtn = $("mapSearchBtn");
+  const searchInput = $("mapSearchInput");
+  const currentBtn = $("mapCurrentBtn");
+  const externalBtn = $("mapOpenExternalBtn");
+
+  if (searchBtn) {
+    searchBtn.addEventListener("click", searchKakaoMap);
+  }
+
+  if (searchInput) {
+    searchInput.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        searchKakaoMap();
+      }
+    });
+  }
+
+  if (currentBtn) {
+    currentBtn.addEventListener("click", () => {
+      initMapPage(() => {
+        moveKakaoMap(DEFAULT_MAP_CENTER.lat, DEFAULT_MAP_CENTER.lng, DEFAULT_MAP_LABEL);
+      });
+    });
+  }
+
+  if (externalBtn) {
+    externalBtn.addEventListener("click", () => {
+      window.open(KAKAO_EXTERNAL_MAP_URL, "_blank", "noopener,noreferrer");
+    });
+  }
+}
+
+function initMapPage(afterReady) {
+  const canvas = $("mapCanvas");
+  if (!canvas) return;
+
+  if (!window.kakao || !window.kakao.maps) {
+    setMapStatus("카카오맵 스크립트를 불러오지 못했습니다. 도메인 등록과 인터넷 연결을 확인해주세요.");
+    return;
+  }
+
+  if (kakaoMapReady && kakaoMap) {
+    window.kakao.maps.event.trigger(kakaoMap, "resize");
+    kakaoMap.setCenter(new window.kakao.maps.LatLng(DEFAULT_MAP_CENTER.lat, DEFAULT_MAP_CENTER.lng));
+    if (typeof afterReady === "function") afterReady();
+    return;
+  }
+
+  window.kakao.maps.load(() => {
+    const center = new window.kakao.maps.LatLng(DEFAULT_MAP_CENTER.lat, DEFAULT_MAP_CENTER.lng);
+
+    kakaoMap = new window.kakao.maps.Map(canvas, {
+      center,
+      level: 4,
+    });
+
+    kakaoMarker = new window.kakao.maps.Marker({
+      position: center,
+      map: kakaoMap,
+    });
+
+    kakaoInfoWindow = new window.kakao.maps.InfoWindow({
+      content: `<div class="mapInfoWindow">${DEFAULT_MAP_LABEL}</div>`,
+    });
+
+    kakaoInfoWindow.open(kakaoMap, kakaoMarker);
+
+    kakaoPlaces = new window.kakao.maps.services.Places();
+    kakaoGeocoder = new window.kakao.maps.services.Geocoder();
+
+    kakaoMapReady = true;
+    setMapStatus("지도가 준비되었습니다. 장소 또는 주소를 검색해보세요.");
+
+    if (typeof afterReady === "function") afterReady();
+  });
+}
+
+function searchKakaoMap() {
+  const input = $("mapSearchInput");
+  const keyword = input ? input.value.trim() : "";
+
+  if (!keyword) {
+    setMapStatus("검색어를 입력해주세요.");
+    return;
+  }
+
+  initMapPage(() => {
+    if (!kakaoPlaces || !kakaoGeocoder) {
+      setMapStatus("검색 서비스를 준비하지 못했습니다.");
+      return;
+    }
+
+    setMapStatus(`"${keyword}" 검색 중...`);
+    $("mapResultList").innerHTML = "";
+
+    kakaoPlaces.keywordSearch(keyword, (data, status) => {
+      if (status === window.kakao.maps.services.Status.OK && data.length) {
+        renderMapResults(data);
+        const first = data[0];
+        moveKakaoMap(Number(first.y), Number(first.x), first.place_name, first.road_address_name || first.address_name);
+        return;
+      }
+
+      kakaoGeocoder.addressSearch(keyword, (result, addressStatus) => {
+        if (addressStatus === window.kakao.maps.services.Status.OK && result.length) {
+          const first = result[0];
+          const item = {
+            place_name: keyword,
+            x: first.x,
+            y: first.y,
+            road_address_name: first.road_address?.address_name || "",
+            address_name: first.address?.address_name || keyword,
+          };
+
+          renderMapResults([item]);
+          moveKakaoMap(Number(first.y), Number(first.x), keyword, item.road_address_name || item.address_name);
+          return;
+        }
+
+        setMapStatus("검색 결과가 없습니다. 검색어를 조금 더 구체적으로 입력해보세요.");
+      });
     });
   });
 }
+
+function renderMapResults(list) {
+  const target = $("mapResultList");
+  if (!target) return;
+
+  target.innerHTML = list.slice(0, 10).map((item, idx) => {
+    const title = item.place_name || item.address_name || "검색 결과";
+    const address = item.road_address_name || item.address_name || "";
+    return `
+      <button class="mapResultItem" type="button" data-lat="${escapeHtml(item.y)}" data-lng="${escapeHtml(item.x)}" data-title="${escapeHtml(title)}" data-address="${escapeHtml(address)}">
+        <span>${idx + 1}</span>
+        <strong>${escapeHtml(title)}</strong>
+        <small>${escapeHtml(address)}</small>
+      </button>
+    `;
+  }).join("");
+
+  target.querySelectorAll(".mapResultItem").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      moveKakaoMap(
+        Number(btn.dataset.lat),
+        Number(btn.dataset.lng),
+        btn.dataset.title,
+        btn.dataset.address,
+      );
+    });
+  });
+
+  setMapStatus(`${Math.min(list.length, 10)}개의 검색 결과가 있습니다.`);
+}
+
+function moveKakaoMap(lat, lng, title, address = "") {
+  if (!kakaoMap || !window.kakao) return;
+
+  const position = new window.kakao.maps.LatLng(lat, lng);
+
+  kakaoMap.setCenter(position);
+  kakaoMap.setLevel(3);
+
+  if (!kakaoMarker) {
+    kakaoMarker = new window.kakao.maps.Marker({ map: kakaoMap });
+  }
+
+  kakaoMarker.setPosition(position);
+  kakaoMarker.setMap(kakaoMap);
+
+  if (!kakaoInfoWindow) {
+    kakaoInfoWindow = new window.kakao.maps.InfoWindow();
+  }
+
+  kakaoInfoWindow.setContent(`
+    <div class="mapInfoWindow">
+      <strong>${escapeHtml(title || "선택 위치")}</strong>
+      ${address ? `<small>${escapeHtml(address)}</small>` : ""}
+    </div>
+  `);
+  kakaoInfoWindow.open(kakaoMap, kakaoMarker);
+
+  setMapStatus(`${title || "선택 위치"}로 이동했습니다.`);
+}
+
+function setMapStatus(text) {
+  const el = $("mapStatusText");
+  if (el) el.textContent = text;
+}
+
 
 function bindQuickAdd() {
   $("quickAddBtn").addEventListener("click", () => {
@@ -339,13 +531,7 @@ function bindSettings() {
     settings.theme = $("themeSelect").value;
     applyTheme();
   });
-
-  $("displayModeSelect").addEventListener("change", () => {
-    settings.appearance = $("displayModeSelect").value;
-    applyTheme();
-  });
-
-  $("editTeamSelect").addEventListener("change", () => {
+$("editTeamSelect").addEventListener("change", () => {
     fillTeamInputs($("editTeamSelect").value);
   });
 
@@ -389,7 +575,6 @@ function renderSettings() {
   $("activeTeamSelect").value = settings.activeTeam;
   $("editTeamSelect").value = $("editTeamSelect").value || settings.activeTeam;
   $("themeSelect").value = settings.theme || "ios-blue";
-  $("displayModeSelect").value = settings.appearance || "system";
 
   fillTeamInputs($("editTeamSelect").value);
   populateCurrentUserSelect(settings.activeTeam);
@@ -429,7 +614,6 @@ function populateCurrentUserSelect(team) {
 
 function applyTheme() {
   document.body.dataset.theme = settings.theme || "ios-blue";
-  document.body.dataset.appearance = settings.appearance || "system";
 }
 
 function renderTeamPreview() {
@@ -1149,7 +1333,6 @@ function saveTeamSettings() {
 
 function saveThemeSettings() {
   settings.theme = $("themeSelect").value || "ios-blue";
-  settings.appearance = $("displayModeSelect").value || "system";
   saveAll();
   applyTheme();
   alert("테마가 저장되었습니다.");
