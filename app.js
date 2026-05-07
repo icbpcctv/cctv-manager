@@ -1,4 +1,4 @@
-const APP_VERSION = "0.5.6";
+const APP_VERSION = "0.5.7";
 const KAKAO_EXTERNAL_MAP_URL = "https://map.kakao.com/";
 const DEFAULT_MAP_CENTER = { lat: 37.5070, lng: 126.7218 };
 const DEFAULT_MAP_LABEL = "부평구청";
@@ -217,7 +217,8 @@ function bindTabs() {
       renderAll();
 
       if (page === "mapPage") {
-        setTimeout(initMapPage, 80);
+        setTimeout(initMapPage, 120);
+        setTimeout(initMapPage, 450);
       }
     });
   });
@@ -263,44 +264,63 @@ function initMapPage(afterReady) {
   if (!canvas) return;
 
   if (!window.kakao || !window.kakao.maps) {
-    setMapStatus("카카오맵 스크립트를 불러오지 못했습니다. 도메인 등록과 인터넷 연결을 확인해주세요.");
+    setMapStatus("카카오맵 스크립트를 불러오지 못했습니다. 카카오 Developers 도메인 등록과 인터넷 연결을 확인해주세요.");
     return;
   }
 
-  if (kakaoMapReady && kakaoMap) {
-    window.kakao.maps.event.trigger(kakaoMap, "resize");
-    kakaoMap.setCenter(new window.kakao.maps.LatLng(DEFAULT_MAP_CENTER.lat, DEFAULT_MAP_CENTER.lng));
-    if (typeof afterReady === "function") afterReady();
-    return;
+  try {
+    if (kakaoMapReady && kakaoMap) {
+      kakaoMap.relayout();
+      kakaoMap.setCenter(new window.kakao.maps.LatLng(DEFAULT_MAP_CENTER.lat, DEFAULT_MAP_CENTER.lng));
+      if (typeof afterReady === "function") afterReady();
+      return;
+    }
+
+    window.kakao.maps.load(() => {
+      try {
+        canvas.innerHTML = "";
+
+        const center = new window.kakao.maps.LatLng(DEFAULT_MAP_CENTER.lat, DEFAULT_MAP_CENTER.lng);
+
+        kakaoMap = new window.kakao.maps.Map(canvas, {
+          center,
+          level: 4,
+        });
+
+        kakaoMap.relayout();
+
+        kakaoMarker = new window.kakao.maps.Marker({
+          position: center,
+          map: kakaoMap,
+        });
+
+        kakaoInfoWindow = new window.kakao.maps.InfoWindow({
+          content: `<div class="mapInfoWindow">${DEFAULT_MAP_LABEL}</div>`,
+        });
+
+        kakaoInfoWindow.open(kakaoMap, kakaoMarker);
+
+        kakaoPlaces = new window.kakao.maps.services.Places();
+        kakaoGeocoder = new window.kakao.maps.services.Geocoder();
+
+        kakaoMapReady = true;
+        setMapStatus("지도가 준비되었습니다. 장소 또는 주소를 검색해보세요.");
+
+        setTimeout(() => {
+          if (kakaoMap) {
+            kakaoMap.relayout();
+            kakaoMap.setCenter(center);
+          }
+        }, 180);
+
+        if (typeof afterReady === "function") afterReady();
+      } catch (error) {
+        setMapStatus("지도 초기화 중 오류가 발생했습니다. 카카오 키/도메인 등록 상태를 확인해주세요.");
+      }
+    });
+  } catch (error) {
+    setMapStatus("지도 로딩 중 오류가 발생했습니다. 카카오 Developers 설정을 확인해주세요.");
   }
-
-  window.kakao.maps.load(() => {
-    const center = new window.kakao.maps.LatLng(DEFAULT_MAP_CENTER.lat, DEFAULT_MAP_CENTER.lng);
-
-    kakaoMap = new window.kakao.maps.Map(canvas, {
-      center,
-      level: 4,
-    });
-
-    kakaoMarker = new window.kakao.maps.Marker({
-      position: center,
-      map: kakaoMap,
-    });
-
-    kakaoInfoWindow = new window.kakao.maps.InfoWindow({
-      content: `<div class="mapInfoWindow">${DEFAULT_MAP_LABEL}</div>`,
-    });
-
-    kakaoInfoWindow.open(kakaoMap, kakaoMarker);
-
-    kakaoPlaces = new window.kakao.maps.services.Places();
-    kakaoGeocoder = new window.kakao.maps.services.Geocoder();
-
-    kakaoMapReady = true;
-    setMapStatus("지도가 준비되었습니다. 장소 또는 주소를 검색해보세요.");
-
-    if (typeof afterReady === "function") afterReady();
-  });
 }
 
 function searchKakaoMap() {

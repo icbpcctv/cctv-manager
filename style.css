@@ -2574,3 +2574,20 @@ textarea {
   font-size: 11.5px !important;
   text-align: center !important;
 }
+
+
+/* =====================
+   v0.5.7 Kakao map load fix
+===================== */
+
+.mapCanvas > div {
+  border-radius: 16px;
+}
+
+.mapCanvas .mapLoading {
+  z-index: 1;
+}
+
+.mapStatusText {
+  min-height: 17px;
+}
