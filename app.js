@@ -1,4 +1,5 @@
-const APP_VERSION = "0.4.9";
+const APP_VERSION = "0.5.3";
+const MAP_URL = "https://gis.icbp.go.kr/portal/apps/sites/#/bp-home/apps/8e2e8a3d6e3f4e59bf9ea54c22e5c516/explore";
 
 const SETTINGS_KEY = "cctv_settings_v4";
 const REALTIME_KEY = "cctv_realtime_records_v2";
@@ -21,6 +22,7 @@ const DEFAULT_SETTINGS = {
   activeTeam: "1조",
   currentUser: "",
   theme: "ios-blue",
+  appearance: "system",
   teamName: "1조",
   teams: { ...DEFAULT_TEAMS },
   members: [],
@@ -45,6 +47,7 @@ let teamSpecials = readJson(TEAM_SPECIAL_KEY, []);
 let lastBackup = readJson(LAST_BACKUP_KEY, null);
 
 let currentPeriodDate = new Date();
+let editState = null;
 
 const $ = (id) => document.getElementById(id);
 
@@ -52,7 +55,9 @@ init();
 
 function init() {
   bindTabs();
+  bindMapTab();
   bindQuickAdd();
+  bindListModal();
   bindForms();
   bindDynamicForms();
   bindMonth();
@@ -113,6 +118,7 @@ function mergeSettings(source) {
   next.members = next.teams[next.activeTeam] || [];
 
   if (!next.theme) next.theme = "ios-blue";
+  if (!next.appearance) next.appearance = "system";
 
   if (!next.currentUser || !next.members.includes(next.currentUser)) {
     next.currentUser = next.members[0] || "";
@@ -192,12 +198,29 @@ function formatDateTime(value) {
 function bindTabs() {
   document.querySelectorAll(".bottomTab").forEach((btn) => {
     btn.addEventListener("click", () => {
+      const page = btn.dataset.page;
+      if (!page) return;
+
       document.querySelectorAll(".bottomTab").forEach((b) => b.classList.remove("active"));
       document.querySelectorAll(".page").forEach((p) => p.classList.remove("active"));
+
       btn.classList.add("active");
-      $(btn.dataset.page).classList.add("active");
+      $(page).classList.add("active");
+
       closeQuickDial();
       renderAll();
+    });
+  });
+}
+
+function bindMapTab() {
+  document.querySelectorAll("[data-map-url]").forEach((btn) => {
+    btn.addEventListener("click", (event) => {
+      event.preventDefault();
+      closeQuickDial();
+
+      const opened = window.open(MAP_URL, "_blank", "noopener,noreferrer");
+      if (!opened) location.href = MAP_URL;
     });
   });
 }
@@ -218,6 +241,27 @@ function bindQuickAdd() {
   });
 
   $("closeInputModal").addEventListener("click", closeInputModal);
+}
+
+
+function bindListModal() {
+  document.addEventListener("click", (event) => {
+    const cellTrigger = event.target.closest("th[data-list-key], td[data-list-key]");
+    const trigger = cellTrigger || event.target.closest("button[data-list-key], .clickableStatus[data-list-key]");
+    if (!trigger) return;
+
+    const key = trigger.dataset.listKey;
+    if (!key) return;
+
+    event.preventDefault();
+    event.stopPropagation();
+
+    openListModal(key, {
+      category: trigger.dataset.category || "",
+    });
+  });
+
+  $("closeListModal").addEventListener("click", closeListModal);
 }
 
 function closeQuickDial() {
@@ -296,6 +340,11 @@ function bindSettings() {
     applyTheme();
   });
 
+  $("displayModeSelect").addEventListener("change", () => {
+    settings.appearance = $("displayModeSelect").value;
+    applyTheme();
+  });
+
   $("editTeamSelect").addEventListener("change", () => {
     fillTeamInputs($("editTeamSelect").value);
   });
@@ -340,6 +389,7 @@ function renderSettings() {
   $("activeTeamSelect").value = settings.activeTeam;
   $("editTeamSelect").value = $("editTeamSelect").value || settings.activeTeam;
   $("themeSelect").value = settings.theme || "ios-blue";
+  $("displayModeSelect").value = settings.appearance || "system";
 
   fillTeamInputs($("editTeamSelect").value);
   populateCurrentUserSelect(settings.activeTeam);
@@ -379,6 +429,7 @@ function populateCurrentUserSelect(team) {
 
 function applyTheme() {
   document.body.dataset.theme = settings.theme || "ios-blue";
+  document.body.dataset.appearance = settings.appearance || "system";
 }
 
 function renderTeamPreview() {
@@ -418,7 +469,7 @@ function renderHomeSummary() {
 function renderRealtimeSummary(tableId, today, ym) {
   const todayValues = realtimeCategories.map((c) => realtimeRecords.filter((r) => r.date === today && r.category === c).length);
   const monthValues = realtimeCategories.map((c) => realtimeRecords.filter((r) => r.date.startsWith(ym) && r.category === c).length);
-  renderMatrixTable(tableId, realtimeCategories, [["오늘", ...todayValues, sum(todayValues)]]);
+  renderMatrixTable(tableId, realtimeCategories, [["오늘", ...todayValues, sum(todayValues)]], { hideLabelColumn: true, cellListKey: "homeRealtime" });
   setMonthHint("realtimeMonthHint", `이번달 누계 <strong>${sum(monthValues)}</strong>건`);
 }
 
@@ -426,14 +477,14 @@ function renderCivilSummary(tableId, today, ym) {
   const todayValues = civilTypes.map((label) => countCivilByLabel(today, label));
   const monthValues = civilTypes.map((label) => countCivilByMonthLabel(ym, label));
 
-  renderMatrixTable(tableId, civilTypes, [["오늘", ...todayValues]], { showTotal: false });
+  renderMatrixTable(tableId, civilTypes, [["오늘", ...todayValues]], { showTotal: false, hideLabelColumn: true, labelMode: "civil", cellListKey: "homeCivil" });
   setMonthHint("civilMonthHint", `이번달 누계 <strong>${sum(monthValues)}</strong>건`);
 }
 
 function renderPoliceSummary(tableId, today, ym) {
   const todayValues = policeCategories.map((c) => policeRecords.filter((r) => r.date === today && r.category === c).length);
   const monthValues = policeCategories.map((c) => policeRecords.filter((r) => r.date.startsWith(ym) && r.category === c).length);
-  renderMatrixTable(tableId, policeCategories, [["오늘", ...todayValues, sum(todayValues)]]);
+  renderMatrixTable(tableId, policeCategories, [["오늘", ...todayValues, sum(todayValues)]], { hideLabelColumn: true, cellListKey: "homePolice" });
   setMonthHint("policeMonthHint", `이번달 누계 <strong>${sum(monthValues)}</strong>건`);
 }
 
@@ -442,7 +493,7 @@ function renderVideoSummary(tableId, today, ym) {
   const monthValues = videoCategories.map((c) => formatVideoCount(videoRecords.filter((r) => r.date.startsWith(ym) && r.category === c)));
   renderMatrixTable(tableId, videoCategories, [
     ["오늘", ...todayValues, formatVideoCount(videoRecords.filter((r) => r.date === today))],
-  ]);
+  ], { hideLabelColumn: true, cellListKey: "homeVideo" });
   setMonthHint("videoMonthHint", `이번달 누계 <strong>${cellHtml(formatVideoCount(videoRecords.filter((r) => r.date.startsWith(ym))))}</strong>`);
 }
 
@@ -488,7 +539,7 @@ function formatVideoCount(list) {
   const view = list.filter((r) => r.process === "열람").length;
   const copy = list.filter((r) => r.process === "복제").length;
   return {
-    html: `${list.length} (<span class="viewCount">${view}</span>/<span class="copyCount">${copy}</span>)`,
+    html: `${list.length}<br><span class="videoSubCount">(<span class="viewCount">${view}</span>/<span class="copyCount">${copy}</span>)</span>`,
   };
 }
 
@@ -545,40 +596,33 @@ function getPeriodKey() {
 }
 
 function renderMonthlyDaily(key) {
-  const dates = new Set();
+  const realtime = realtimeRecords.filter((r) => r.date.startsWith(key)).length;
+  const civil = civilRecords.filter((r) => r.date.startsWith(key)).length;
+  const police = policeRecords.filter((r) => r.date.startsWith(key)).length;
+  const video = videoRecords.filter((r) => r.date.startsWith(key)).length;
+  const info = infoRecords.filter((r) => r.date.startsWith(key)).length;
 
-  [...realtimeRecords, ...civilRecords, ...policeRecords, ...videoRecords, ...infoRecords].forEach((record) => {
-    if (record.date && record.date.startsWith(key)) dates.add(record.date);
-  });
-
-  const rows = Array.from(dates)
-    .sort()
-    .reverse()
-    .map((date) => [
-      date.slice(5),
-      realtimeRecords.filter((r) => r.date === date).length,
-      civilRecords.filter((r) => r.date === date).length,
-      policeRecords.filter((r) => r.date === date).length,
-      videoRecords.filter((r) => r.date === date).length,
-      infoRecords.filter((r) => r.date === date).length,
-    ]);
-
-  renderTable("monthDailyTable", ["날짜", "실적", "민원", "경찰", "영상", "정보"], rows, [1, 2, 3, 4, 5]);
+  renderMatrixTable(
+    "monthDailyTable",
+    ["개인실적", "민원", "경찰관제", "열람복제", "정보공개"],
+    [["누계", realtime, civil, police, video, info]],
+    { showTotal: false, hideLabelColumn: true, cellListKey: "monthDaily" },
+  );
 }
 
 function renderMonthlyPolice(key) {
   const values = policeCategories.map((c) => policeRecords.filter((r) => r.date.startsWith(key) && r.category === c).length);
-  renderMatrixTable("monthPoliceTable", policeCategories, [["누계", ...values, sum(values)]]);
+  renderMatrixTable("monthPoliceTable", policeCategories, [["누계", ...values, sum(values)]], { hideLabelColumn: true, cellListKey: "monthPolice" });
 }
 
 function renderMonthlyVideo(key) {
   const values = videoCategories.map((c) => formatVideoCount(videoRecords.filter((r) => r.date.startsWith(key) && r.category === c)));
-  renderMatrixTable("monthVideoTable", videoCategories, [["누계", ...values, formatVideoCount(videoRecords.filter((r) => r.date.startsWith(key)))]]); 
+  renderMatrixTable("monthVideoTable", videoCategories, [["누계", ...values, formatVideoCount(videoRecords.filter((r) => r.date.startsWith(key)))]] , { hideLabelColumn: true, cellListKey: "monthVideo" }); 
 }
 
 function renderMonthlyCivil(key) {
   const values = civilTypes.map((label) => countCivilByPeriodLabel(key, label));
-  renderMatrixTable("monthCivilTable", civilTypes, [["누계", ...values]], { showTotal: false });
+  renderMatrixTable("monthCivilTable", civilTypes, [["누계", ...values]], { showTotal: false, hideLabelColumn: true, labelMode: "civil", cellListKey: "monthCivil" });
 }
 
 function renderMonthlyInfo(key) {
@@ -588,7 +632,7 @@ function renderMonthlyInfo(key) {
 
 function renderMonthlyRealtime(key) {
   const values = realtimeCategories.map((c) => realtimeRecords.filter((r) => r.date.startsWith(key) && r.category === c).length);
-  renderMatrixTable("monthRealtimeTable", realtimeCategories, [["누계", ...values, sum(values)]]);
+  renderMatrixTable("monthRealtimeTable", realtimeCategories, [["누계", ...values, sum(values)]], { hideLabelColumn: true, cellListKey: "monthRealtime" });
 }
 
 function countCivilByPeriodLabel(key, label) {
@@ -625,56 +669,250 @@ function renderMonthlyDocs(key) {
     ]), [0]);
 }
 
-function openInputModal(type) {
+
+function openListModal(key, options = {}) {
+  const payload = getListPayload(key, options);
+  $("listModalTitle").textContent = payload.title;
+  $("listModalBody").innerHTML = payload.html || '<div class="emptyList">기록 없음</div>';
+
+  $("listModalBody").querySelectorAll("[data-edit-type]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const type = btn.dataset.editType;
+      const id = btn.dataset.editId;
+      const record = findRecord(type, id);
+      if (record) openInputModal(type, record);
+    });
+  });
+
+  $("listModalBody").querySelectorAll("[data-date-detail]").forEach((btn) => {
+    btn.addEventListener("click", () => openListModal("dateDetail", { date: btn.dataset.dateDetail }));
+  });
+
+  $("listModal").classList.add("show");
+}
+
+function closeListModal() {
+  const modal = $("listModal");
+  if (modal) modal.classList.remove("show");
+}
+
+function getListPayload(key, options = {}) {
+  const today = todayString();
+  const period = getPeriodKey();
+  const map = {
+    homeRealtime: { title: "오늘 실시간 개인실적", refs: realtimeRecords.filter((r) => r.date === today).map((item) => ref("realtime", item)) },
+    homePolice: { title: "오늘 경찰관제요청", refs: policeRecords.filter((r) => r.date === today).map((item) => ref("police", item)) },
+    homeVideo: { title: "오늘 영상열람반출", refs: videoRecords.filter((r) => r.date === today).map((item) => ref("video", item)) },
+    homeCivil: { title: "오늘 민원", refs: [...civilRecords.filter((r) => r.date === today).map((item) => ref("civil", item)), ...infoRecords.filter((r) => r.date === today).map((item) => ref("info", item))] },
+    homeApproval: { title: "사후결재", refs: videoRecords.filter((r) => r.approval && !r.approval.completed).map((item) => ref("video", item, "사후결재")) },
+    homeDestroy: { title: "파기공문", refs: videoRecords.filter((r) => r.destroy && !r.destroy.completed).map((item) => ref("video", item, "파기공문")) },
+    monthRealtime: { title: "실시간 개인실적", refs: realtimeRecords.filter((r) => r.date.startsWith(period)).map((item) => ref("realtime", item)) },
+    monthPolice: { title: "경찰관제요청", refs: policeRecords.filter((r) => r.date.startsWith(period)).map((item) => ref("police", item)) },
+    monthVideo: { title: "영상열람반출", refs: videoRecords.filter((r) => r.date.startsWith(period)).map((item) => ref("video", item)) },
+    monthCivil: { title: "민원처리", refs: [...civilRecords.filter((r) => r.date.startsWith(period)).map((item) => ref("civil", item)), ...infoRecords.filter((r) => r.date.startsWith(period)).map((item) => ref("info", item))] },
+    monthPersonalSpecial: { title: "개인특이사항", refs: personalSpecials.filter((r) => r.date.startsWith(period)).map((item) => ref("realtime", item, "개인특이")) },
+    monthTeamSpecial: { title: "조특이사항", refs: teamSpecials.filter((r) => r.date.startsWith(period)).map((item) => ref("police", item, "조특이")) },
+    monthApproval: { title: "사후결재", refs: videoRecords.filter((r) => r.date.startsWith(period) && r.approval).map((item) => ref("video", item, "사후결재")) },
+    monthDestroy: { title: "파기공문", refs: videoRecords.filter((r) => r.date.startsWith(period) && r.destroy).map((item) => ref("video", item, "파기공문")) },
+  };
+  if (key === "monthDaily") return getDailyPayload(period, options.category || "");
+  if (key === "dateDetail") return getDateDetailPayload(options.date);
+  const data = map[key] || { title: "세부내용", refs: [] };
+  const refs = options.category ? filterRefsByCategory(data.refs, options.category) : data.refs;
+  const title = options.category ? `${data.title} · ${options.category || "합계"}` : data.title;
+  return { title, html: renderRecordList(refs) };
+}
+
+function filterRefsByCategory(refs, category) {
+  if (!category) return refs;
+
+  return refs.filter(({ type, item }) => {
+    if (category === "정보공개") return type === "info";
+    if (category === "민원-나") return type === "civil" && item.type === "전화민원" && item.phoneOwner === "나";
+    if (category === "민원-대리") return type === "civil" && item.type === "전화민원" && item.phoneOwner === "대리";
+    if (type === "civil") return item.type === category;
+    return item.category === category;
+  });
+}
+
+function getDailyPayload(period, category = "") {
+  if (category) {
+    const refsByCategory = {
+      "개인실적": realtimeRecords.filter((r) => r.date.startsWith(period)).map((item) => ref("realtime", item)),
+      "민원": civilRecords.filter((r) => r.date.startsWith(period)).map((item) => ref("civil", item)),
+      "경찰관제": policeRecords.filter((r) => r.date.startsWith(period)).map((item) => ref("police", item)),
+      "열람복제": videoRecords.filter((r) => r.date.startsWith(period)).map((item) => ref("video", item)),
+      "정보공개": infoRecords.filter((r) => r.date.startsWith(period)).map((item) => ref("info", item)),
+    };
+    return { title: `일자별 현황 · ${category}`, html: renderRecordList(refsByCategory[category] || []) };
+  }
+
+  const dates = new Set();
+
+  [...realtimeRecords, ...civilRecords, ...policeRecords, ...videoRecords, ...infoRecords].forEach((r) => {
+    if (r.date && r.date.startsWith(period)) dates.add(r.date);
+  });
+
+  const html = Array.from(dates).sort().reverse().map((date) => {
+    const rt = realtimeRecords.filter((r) => r.date === date).length;
+    const cv = civilRecords.filter((r) => r.date === date).length;
+    const po = policeRecords.filter((r) => r.date === date).length;
+    const vi = videoRecords.filter((r) => r.date === date).length;
+    const inf = infoRecords.filter((r) => r.date === date).length;
+
+    return `<button class="dateSummaryCard" type="button" data-date-detail="${escapeHtml(date)}"><strong>${escapeHtml(date)}</strong><span>개인 ${rt}</span><span>민원 ${cv}</span><span>경찰 ${po}</span><span>영상 ${vi}</span><span>정보 ${inf}</span></button>`;
+  }).join("");
+
+  return { title: "일자별 현황", html };
+}
+
+function getDateDetailPayload(date) {
+  const refs = [
+    ...realtimeRecords.filter((r) => r.date === date).map((item) => ref("realtime", item)),
+    ...civilRecords.filter((r) => r.date === date).map((item) => ref("civil", item)),
+    ...policeRecords.filter((r) => r.date === date).map((item) => ref("police", item)),
+    ...videoRecords.filter((r) => r.date === date).map((item) => ref("video", item)),
+    ...infoRecords.filter((r) => r.date === date).map((item) => ref("info", item)),
+  ];
+  return { title: `${date} 세부내용`, html: renderRecordList(refs) };
+}
+
+function ref(type, item, prefix = "") { return { type, item, prefix }; }
+
+function renderRecordList(refs) {
+  if (!refs.length) return '<div class="emptyList">기록 없음</div>';
+  return refs.map(({ type, item, prefix }, idx) => `<button class="recordListItem" type="button" data-edit-type="${type}" data-edit-id="${escapeHtml(item.sourceId || item.id)}"><span class="recordNo">${idx + 1}</span><span class="recordText"><strong>${escapeHtml(recordTitle(type, item, prefix))}</strong><small>${escapeHtml(recordSubText(type, item))}</small></span></button>`).join("");
+}
+
+function recordTitle(type, item, prefix = "") {
+  const label = prefix ? `${prefix} · ` : "";
+  if (type === "realtime") return `${label}${item.date || ""} ${item.startTime || ""} ${item.category || ""}`;
+  if (type === "civil") return `${label}${item.date || ""} ${item.time || ""} ${civilTitle(item)}`;
+  if (type === "police") return `${label}${item.date || ""} ${item.time || ""} ${item.category || ""}`;
+  if (type === "video") return `${label}${item.date || ""} ${item.time || ""} ${item.process || ""} · ${item.category || ""}`;
+  if (type === "info") return `${label}${item.date || ""} 정보공개 ${item.receiptNo || ""}`;
+  return `${label}${item.date || ""}`;
+}
+
+function recordSubText(type, item) {
+  if (type === "realtime") return [item.manageNo, item.location, item.content, item.note].filter(Boolean).join(" · ");
+  if (type === "civil") return [item.complainantInfo, item.manageNo, item.location, item.content, item.action].filter(Boolean).join(" · ");
+  if (type === "police") return [item.agency, item.manageNo, item.location, item.content, item.action].filter(Boolean).join(" · ");
+  if (type === "video") return [item.content, item.approval ? "사후결재" : "", item.destroy ? "파기공문" : ""].filter(Boolean).join(" · ");
+  if (type === "info") return [item.manageNo, item.claimantName, item.content, item.note].filter(Boolean).join(" · ");
+  return summaryText(item);
+}
+
+function findRecord(type, id) {
+  const source = { realtime: realtimeRecords, civil: civilRecords, police: policeRecords, video: videoRecords, info: infoRecords }[type];
+  return source?.find((item) => item.id === id) || null;
+}
+
+function openInputModal(type, record = null) {
   document.querySelectorAll(".inputForm").forEach((form) => {
     form.classList.remove("active");
     form.reset();
   });
 
+  editState = record ? { type, id: record.id } : null;
+
   const today = todayString();
   const now = timeString();
 
   if (type === "realtime") {
-    $("modalTitle").textContent = "실시간 개인실적 입력";
+    $("modalTitle").textContent = record ? "실시간 개인실적 수정" : "실시간 개인실적 입력";
     $("formRealtime").classList.add("active");
-    $("rtDate").value = today;
-    $("rtStartTime").value = now;
+    $("rtDate").value = record?.date || today;
+    $("rtStartTime").value = record?.startTime || now;
+    $("rtEndTime").value = record?.endTime || "";
+    $("rtManageNo").value = record?.manageNo || "";
+    $("rtLocation").value = record?.location || "";
+    $("rtCategory").value = record?.category || "강력";
+    $("rtContent").value = record?.content || "";
+    $("rtNote").value = record?.note || "";
+    $("rtPersonalSpecial").checked = false;
   }
 
   if (type === "civil") {
-    $("modalTitle").textContent = "민원처리 입력";
+    $("modalTitle").textContent = record ? "민원처리 수정" : "민원처리 입력";
     $("formCivil").classList.add("active");
-    $("civilDate").value = today;
-    $("civilTime").value = now;
+    $("civilDate").value = record?.date || today;
+    $("civilTime").value = record?.time || now;
+    $("civilType").value = record?.type || "비상벨대응";
+    $("civilPhoneOwner").value = record?.phoneOwner || "나";
+    $("civilProxyMember").value = record?.proxyMember || "";
+    $("civilComplainantInfo").value = record?.complainantInfo || "";
+    $("civilManageNo").value = record?.manageNo || "";
+    $("civilLocation").value = record?.location || "";
+    $("civilContent").value = record?.content || "";
+    $("civilAction").value = record?.action || "";
     updateCivilFields();
   }
 
   if (type === "police") {
-    $("modalTitle").textContent = "경찰관제요청 입력";
+    $("modalTitle").textContent = record ? "경찰관제요청 수정" : "경찰관제요청 입력";
     $("formPolice").classList.add("active");
-    $("policeDate").value = today;
-    $("policeTime").value = now;
+    $("policeDate").value = record?.date || today;
+    $("policeTime").value = record?.time || now;
+    $("policeCategory").value = record?.category || "강력";
+    $("policeAgency").value = record?.agency || "119";
+    $("policeManageNo").value = record?.manageNo || "";
+    $("policeLocation").value = record?.location || "";
+    $("policeContent").value = record?.content || "";
+    $("policeAction").value = record?.action || "";
+    $("policeTeamSpecial").checked = false;
   }
 
   if (type === "video") {
-    $("modalTitle").textContent = "영상열람반출 입력";
+    $("modalTitle").textContent = record ? "영상열람반출 수정" : "영상열람반출 입력";
     $("formVideo").classList.add("active");
-    $("videoDate").value = today;
-    $("videoTime").value = now;
+    $("videoDate").value = record?.date || today;
+    $("videoTime").value = record?.time || now;
+    $("videoCategory").value = record?.category || "강도";
+    $("videoProcess").value = record?.process || "열람";
+    $("videoContent").value = record?.content || "";
+    $("videoApprovalCheck").checked = !!record?.approval;
+    $("approvalVisitDateTime").value = record?.approval?.visitDateTime || "";
+    $("approvalOrg").value = record?.approval?.org || "";
+    $("approvalRank").value = record?.approval?.rank || "";
+    $("approvalName").value = record?.approval?.name || "";
+    $("approvalPhone").value = record?.approval?.phone || "";
+    $("approvalDocNo").value = record?.approval?.docNo || "";
+    $("approvalKeyword").value = record?.approval?.keyword || "";
+    $("approvalContent").value = record?.approval?.content || "";
+    $("approvalCompleted").checked = !!record?.approval?.completed;
+    $("videoDestroyCheck").checked = !!record?.destroy;
+    $("destroyVisitDateTime").value = record?.destroy?.visitDateTime || "";
+    $("destroyOrg").value = record?.destroy?.org || "";
+    $("destroyRank").value = record?.destroy?.rank || "";
+    $("destroyName").value = record?.destroy?.name || "";
+    $("destroyPhone").value = record?.destroy?.phone || "";
+    $("destroyDocNo").value = record?.destroy?.docNo || "";
+    $("destroySendDocNo").value = record?.destroy?.sendDocNo || "";
+    $("destroyContent").value = record?.destroy?.content || "";
+    $("destroyCompleted").checked = !!record?.destroy?.completed;
     updateVideoFields();
   }
 
   if (type === "info") {
-    $("modalTitle").textContent = "정보공개 입력";
+    $("modalTitle").textContent = record ? "정보공개 수정" : "정보공개 입력";
     $("formInfo").classList.add("active");
-    $("infoReceiptDate").value = today;
+    $("infoReceiptDate").value = record?.date || today;
+    $("infoReceiptNo").value = record?.receiptNo || "";
+    $("infoManageNo").value = record?.manageNo || "";
+    $("infoClaimantName").value = record?.claimantName || "";
+    $("infoClaimantPhone").value = record?.claimantPhone || "";
+    $("infoContent").value = record?.content || "";
+    $("infoNote").value = record?.note || "";
   }
 
+  closeListModal();
   $("inputModal").classList.add("show");
 }
 
 function closeInputModal() {
   $("inputModal").classList.remove("show");
+  editState = null;
 }
 
 function updateCivilFields() {
@@ -698,6 +936,19 @@ function show(id, visible) {
   $(id).classList.toggle("hidden", !visible);
 }
 
+
+function saveRecordToList(type, list, record) {
+  if (editState && editState.type === type) {
+    const idx = list.findIndex((item) => item.id === editState.id);
+    if (idx !== -1) {
+      list[idx] = { ...list[idx], ...record, id: editState.id, updatedAt: new Date().toISOString() };
+      return list[idx];
+    }
+  }
+  list.push(record);
+  return record;
+}
+
 function saveRealtimeRecord(e) {
   e.preventDefault();
   const record = {
@@ -712,8 +963,8 @@ function saveRealtimeRecord(e) {
     note: $("rtNote").value.trim(),
     createdAt: new Date().toISOString(),
   };
-  realtimeRecords.push(record);
-  if ($("rtPersonalSpecial").checked) personalSpecials.push({ ...record, id: makeId(), sourceId: record.id });
+  const saved = saveRecordToList("realtime", realtimeRecords, record);
+  if ($("rtPersonalSpecial").checked) personalSpecials.push({ ...saved, id: makeId(), sourceId: saved.id });
   saveAll();
   closeInputModal();
   renderAll();
@@ -721,8 +972,8 @@ function saveRealtimeRecord(e) {
 
 function saveCivilRecord(e) {
   e.preventDefault();
-  civilRecords.push({
-    id: makeId(),
+  const record = {
+    id: editState?.type === "civil" ? editState.id : makeId(),
     date: $("civilDate").value || todayString(),
     time: $("civilTime").value || timeString(),
     type: $("civilType").value,
@@ -734,7 +985,9 @@ function saveCivilRecord(e) {
     content: $("civilContent").value.trim(),
     action: $("civilAction").value.trim(),
     createdAt: new Date().toISOString(),
-  });
+  };
+
+  saveRecordToList("civil", civilRecords, record);
   saveAll();
   closeInputModal();
   renderAll();
@@ -754,8 +1007,8 @@ function savePoliceRecord(e) {
     action: $("policeAction").value.trim(),
     createdAt: new Date().toISOString(),
   };
-  policeRecords.push(record);
-  if ($("policeTeamSpecial").checked) teamSpecials.push({ ...record, id: makeId(), sourceId: record.id });
+  const saved = saveRecordToList("police", policeRecords, record);
+  if ($("policeTeamSpecial").checked) teamSpecials.push({ ...saved, id: makeId(), sourceId: saved.id });
   saveAll();
   closeInputModal();
   renderAll();
@@ -803,7 +1056,7 @@ function saveVideoRecord(e) {
     };
   }
 
-  videoRecords.push(record);
+  saveRecordToList("video", videoRecords, record);
   saveAll();
   closeInputModal();
   renderAll();
@@ -811,8 +1064,8 @@ function saveVideoRecord(e) {
 
 function saveInfoRecord(e) {
   e.preventDefault();
-  infoRecords.push({
-    id: makeId(),
+  const record = {
+    id: editState?.type === "info" ? editState.id : makeId(),
     date: $("infoReceiptDate").value || todayString(),
     receiptNo: $("infoReceiptNo").value.trim(),
     manageNo: $("infoManageNo").value.trim(),
@@ -821,7 +1074,9 @@ function saveInfoRecord(e) {
     content: $("infoContent").value.trim(),
     note: $("infoNote").value.trim(),
     createdAt: new Date().toISOString(),
-  });
+  };
+
+  saveRecordToList("info", infoRecords, record);
   saveAll();
   closeInputModal();
   renderAll();
@@ -894,6 +1149,7 @@ function saveTeamSettings() {
 
 function saveThemeSettings() {
   settings.theme = $("themeSelect").value || "ios-blue";
+  settings.appearance = $("displayModeSelect").value || "system";
   saveAll();
   applyTheme();
   alert("테마가 저장되었습니다.");
@@ -1010,21 +1266,65 @@ function sum(values) {
   return values.reduce((total, value) => total + Number(value || 0), 0);
 }
 
+
+function labelHtml(value, mode = "default") {
+  const label = String(value ?? "");
+
+  if (mode === "civil") {
+    const civilMap = {
+      "비상벨대응": "비상벨<br>대응",
+      "비상벨기타": "비상벨<br>기타",
+      "비상벨계도": "비상벨<br>계도",
+      "민원-나": "민원<br>나",
+      "민원-대리": "민원<br>대리",
+    };
+
+    return civilMap[label] || escapeHtml(label);
+  }
+
+  return escapeHtml(label);
+}
+
 function renderMatrixTable(tableId, categories, rows, options = {}) {
   const showTotal = options.showTotal !== false;
+  const hideLabelColumn = options.hideLabelColumn === true;
+  const labelMode = options.labelMode || "default";
+  const cellListKey = options.cellListKey || "";
   const headers = showTotal ? ["구분", ...categories, "합계"] : ["구분", ...categories];
+  const visibleHeaders = hideLabelColumn ? headers.slice(1) : headers;
   const table = $(tableId);
+
+  function getCategoryByVisibleIndex(idx, length) {
+    const isTotal = showTotal && idx === length - 1;
+    if (isTotal) return "";
+    return hideLabelColumn ? categories[idx] : categories[idx - 1];
+  }
+
+  function cellAttrs(idx, length) {
+    if (!cellListKey) return "";
+    const category = getCategoryByVisibleIndex(idx, length) || "";
+    return `data-list-key="${escapeHtml(cellListKey)}" data-category="${escapeHtml(category)}"`;
+  }
 
   table.innerHTML = `
     <thead>
-      <tr>${headers.map((header, idx) => `<th class="${idx === 0 ? "" : "num"} ${showTotal && idx === headers.length - 1 ? "totalCol" : ""}">${escapeHtml(header)}</th>`).join("")}</tr>
+      <tr>${visibleHeaders.map((header, idx) => {
+        const isTotal = showTotal && idx === visibleHeaders.length - 1;
+        return `<th ${cellAttrs(idx, visibleHeaders.length)} class="${idx === 0 && !hideLabelColumn ? "" : "num"} ${isTotal ? "totalCol" : ""}">${labelHtml(header, labelMode)}</th>`;
+      }).join("")}</tr>
     </thead>
     <tbody>
-      ${rows.map((row) => `
-        <tr class="${row[0] === "월누계" || row[0] === "누계" ? "total" : ""}">
-          ${row.map((cell, idx) => `<td class="${idx === 0 ? "matrixRowHead" : "num"} ${showTotal && idx === row.length - 1 ? "totalCol" : ""}">${cellHtml(cell)}</td>`).join("")}
-        </tr>
-      `).join("")}
+      ${rows.map((row) => {
+        const visibleRow = hideLabelColumn ? row.slice(1) : row;
+        return `
+          <tr class="${row[0] === "월누계" || row[0] === "누계" ? "total" : ""}">
+            ${visibleRow.map((cell, idx) => {
+              const isTotal = showTotal && idx === visibleRow.length - 1;
+              return `<td ${cellAttrs(idx, visibleRow.length)} class="${idx === 0 && !hideLabelColumn ? "matrixRowHead" : "num"} ${isTotal ? "totalCol" : ""}">${cellHtml(cell)}</td>`;
+            }).join("")}
+          </tr>
+        `;
+      }).join("")}
     </tbody>
   `;
 }

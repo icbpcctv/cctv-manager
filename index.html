@@ -11,7 +11,10 @@
 
     <header class="appHeader">
       <div class="headerLeft">
-        <h1>CCTV MANAGER</h1>
+        <div class="appTitleRow">
+          <img class="appLogo" src="logo-bupyeong.png" alt="부평구 로고" />
+          <h1>CCTV MANAGER</h1>
+        </div>
         <div class="headerSub">
           <span id="headerDateText">날짜</span>
           <span id="headerShiftBadge" class="shiftBadge">근무</span>
@@ -29,57 +32,53 @@
         <h2>오늘 현황보드</h2>
       </section>
 
-      <div class="statusBlock">
-        <div class="statusHeader"><h3>실시간 개인실적</h3></div>
+      <div class="statusBlock clickableStatus" data-list-key="homeRealtime">
+        <div class="statusHeader"><h3>실시간 개인실적</h3><button class="moreBtn" type="button" data-list-key="homeRealtime">+</button></div>
         <div class="tableWrap compactMatrix"><table id="realtimeSummaryTable"></table></div>
         <p id="realtimeMonthHint" class="monthHint"></p>
       </div>
-
-      <div class="statusBlock">
-        <div class="statusHeader"><h3>민원처리</h3></div>
+      <div class="statusBlock clickableStatus" data-list-key="homePolice">
+        <div class="statusHeader"><h3>경찰관제요청</h3><button class="moreBtn" type="button" data-list-key="homePolice">+</button></div>
+        <div class="tableWrap compactMatrix"><table id="policeSummaryTable"></table></div>
+        <p id="policeMonthHint" class="monthHint"></p>
+      </div>
+      <div class="statusBlock clickableStatus" data-list-key="homeVideo">
+        <div class="statusHeader"><h3>영상열람반출</h3><button class="moreBtn" type="button" data-list-key="homeVideo">+</button></div>
+        <div class="tableWrap compactMatrix"><table id="videoSummaryTable"></table></div>
+        <p id="videoMonthHint" class="monthHint"></p>
+      </div>
+      <div class="statusBlock clickableStatus" data-list-key="homeCivil">
+        <div class="statusHeader"><h3>민원처리</h3><button class="moreBtn" type="button" data-list-key="homeCivil">+</button></div>
         <div class="tableWrap compactMatrix"><table id="civilSummaryTable"></table></div>
         <p id="civilMonthHint" class="monthHint"></p>
       </div>
 
-      <div class="statusBlock">
-        <div class="statusHeader"><h3>경찰관제요청</h3></div>
-        <div class="tableWrap compactMatrix"><table id="policeSummaryTable"></table></div>
-        <p id="policeMonthHint" class="monthHint"></p>
-      </div>
-
-      <div class="statusBlock">
-        <div class="statusHeader"><h3>영상열람반출</h3></div>
-        <div class="tableWrap compactMatrix"><table id="videoSummaryTable"></table></div>
-        <p id="videoMonthHint" class="monthHint"></p>
-      </div>
-
-
-      <section class="sectionTitle detailSectionTitle">
+<section class="sectionTitle detailSectionTitle">
         <h2>오늘 세부</h2>
       </section>
 
       <div class="detailBlock">
-        <h3>실시간 개인실적</h3>
+        <div class="detailHeader"><h3>실시간 개인실적</h3><button class="moreBtn small" type="button" data-list-key="homeRealtime">+</button></div>
         <div class="wideScroll detailTable"><table id="realtimeTodayTable"></table></div>
       </div>
 
       <div class="detailBlock">
-        <h3>경찰관제요청</h3>
+        <div class="detailHeader"><h3>경찰관제요청</h3><button class="moreBtn small" type="button" data-list-key="homePolice">+</button></div>
         <div class="wideScroll detailTable"><table id="policeTodayTable"></table></div>
       </div>
 
       <div class="detailBlock">
-        <h3>민원</h3>
+        <div class="detailHeader"><h3>민원</h3><button class="moreBtn small" type="button" data-list-key="homeCivil">+</button></div>
         <div class="wideScroll detailTable"><table id="civilTodayTable"></table></div>
       </div>
 
       <div class="detailBlock">
-        <h3>사후결재</h3>
+        <div class="detailHeader"><h3>사후결재</h3><button class="moreBtn small" type="button" data-list-key="homeApproval">+</button></div>
         <div class="wideScroll detailTable"><table id="approvalHomeTable"></table></div>
       </div>
 
       <div class="detailBlock">
-        <h3>파기공문</h3>
+        <div class="detailHeader"><h3>파기공문</h3><button class="moreBtn small" type="button" data-list-key="homeDestroy">+</button></div>
         <div class="wideScroll detailTable"><table id="destroyHomeTable"></table></div>
       </div>
     </section>
@@ -109,49 +108,49 @@
         <h2>월현황</h2>
       </section>
 
-      <div class="statusBlock">
-        <div class="statusHeader"><h3>일자별 현황</h3></div>
+      <div class="statusBlock clickableStatus" data-list-key="monthDaily">
+        <div class="statusHeader"><h3>일자별 현황</h3><button class="moreBtn" type="button" data-list-key="monthDaily">+</button></div>
         <div class="tableWrap compactMatrix"><table id="monthDailyTable"></table></div>
       </div>
 
-      <div class="statusBlock">
-        <div class="statusHeader"><h3>경찰관제요청</h3></div>
+      <div class="statusBlock clickableStatus" data-list-key="monthPolice">
+        <div class="statusHeader"><h3>경찰관제요청</h3><button class="moreBtn" type="button" data-list-key="monthPolice">+</button></div>
         <div class="tableWrap compactMatrix"><table id="monthPoliceTable"></table></div>
       </div>
 
-      <div class="statusBlock">
-        <div class="statusHeader"><h3>영상열람반출</h3></div>
+      <div class="statusBlock clickableStatus" data-list-key="monthVideo">
+        <div class="statusHeader"><h3>영상열람반출</h3><button class="moreBtn" type="button" data-list-key="monthVideo">+</button></div>
         <div class="tableWrap compactMatrix"><table id="monthVideoTable"></table></div>
       </div>
 
-      <div class="statusBlock">
-        <div class="statusHeader"><h3>민원</h3></div>
+      <div class="statusBlock clickableStatus" data-list-key="monthCivil">
+        <div class="statusHeader"><h3>민원처리</h3><button class="moreBtn" type="button" data-list-key="monthCivil">+</button></div>
         <div class="tableWrap compactMatrix"><table id="monthCivilTable"></table></div>
       </div>
 
 
-      <div class="statusBlock">
-        <div class="statusHeader"><h3>개인실적</h3></div>
+      <div class="statusBlock clickableStatus" data-list-key="monthRealtime">
+        <div class="statusHeader"><h3>개인실적</h3><button class="moreBtn" type="button" data-list-key="monthRealtime">+</button></div>
         <div class="tableWrap compactMatrix"><table id="monthRealtimeTable"></table></div>
       </div>
 
       <div class="detailBlock">
-        <h3>개인특이사항</h3>
+        <div class="detailHeader"><h3>개인특이사항</h3><button class="moreBtn small" type="button" data-list-key="monthPersonalSpecial">+</button></div>
         <div class="wideScroll detailTable"><table id="monthPersonalSpecialTable"></table></div>
       </div>
 
       <div class="detailBlock">
-        <h3>조특이사항</h3>
+        <div class="detailHeader"><h3>조특이사항</h3><button class="moreBtn small" type="button" data-list-key="monthTeamSpecial">+</button></div>
         <div class="wideScroll detailTable"><table id="monthTeamSpecialTable"></table></div>
       </div>
 
       <div class="detailBlock">
-        <h3>사후결재</h3>
+        <div class="detailHeader"><h3>사후결재</h3><button class="moreBtn small" type="button" data-list-key="monthApproval">+</button></div>
         <div class="wideScroll detailTable"><table id="monthApprovalTable"></table></div>
       </div>
 
       <div class="detailBlock">
-        <h3>파기공문</h3>
+        <div class="detailHeader"><h3>파기공문</h3><button class="moreBtn small" type="button" data-list-key="monthDestroy">+</button></div>
         <div class="wideScroll detailTable"><table id="monthDestroyTable"></table></div>
       </div>
     </section>
@@ -245,6 +244,13 @@
             <option value="ios-graphite">그래파이트</option>
           </select>
 
+          <label for="displayModeSelect">화면 모드</label>
+          <select id="displayModeSelect">
+            <option value="system">시스템 자동</option>
+            <option value="light">라이트 모드</option>
+            <option value="dark">다크 모드</option>
+          </select>
+
           <div class="themePreviewGrid">
             <div class="themePreview themeBlue"><span></span><strong>iOS 블루</strong></div>
             <div class="themePreview themeSage"><span></span><strong>세이지</strong></div>
@@ -317,11 +323,27 @@
       <strong>월현황</strong>
     </button>
 
+    <button class="bottomTab" type="button" data-map-url="true">
+      <span class="tabIcon iconMap"></span>
+      <strong>지도</strong>
+    </button>
+
     <button class="bottomTab" type="button" data-page="managePage">
       <span class="tabIcon iconMenu"></span>
       <strong>III</strong>
     </button>
   </nav>
+
+
+  <div id="listModal" class="modal listModal">
+    <div class="sheet listSheet">
+      <div class="sheetHeader">
+        <h2 id="listModalTitle">세부내용</h2>
+        <button id="closeListModal" type="button">×</button>
+      </div>
+      <div id="listModalBody" class="listModalBody"></div>
+    </div>
+  </div>
 
   <div id="inputModal" class="modal">
     <div class="sheet">
