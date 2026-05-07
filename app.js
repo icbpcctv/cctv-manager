@@ -1,4 +1,4 @@
-const APP_VERSION = "0.5.9";
+const APP_VERSION = "0.6.0";
 const KAKAO_EXTERNAL_MAP_URL = "https://map.kakao.com/";
 const DEFAULT_MAP_CENTER = { lat: 37.5070, lng: 126.7218 };
 const DEFAULT_MAP_LABEL = "부평구청";
@@ -217,8 +217,9 @@ function bindTabs() {
       renderAll();
 
       if (page === "mapPage") {
-        setTimeout(initMapPage, 160);
-        setTimeout(initMapPage, 520);
+        setTimeout(initMapPage, 80);
+        setTimeout(initMapPage, 280);
+        setTimeout(initMapPage, 700);
       }
     });
   });
@@ -268,7 +269,22 @@ function bindMapControls() {
 
 function initMapPage(afterReady) {
   const canvas = $("mapCanvas");
+  let inner = $("kakaoMapInner");
+
   if (!canvas) return;
+
+  if (!inner) {
+    inner = document.createElement("div");
+    inner.id = "kakaoMapInner";
+    inner.className = "kakaoMapInner";
+    canvas.prepend(inner);
+  }
+
+  const rect = canvas.getBoundingClientRect();
+  if (!rect.width || !rect.height) {
+    setTimeout(() => initMapPage(afterReady), 180);
+    return;
+  }
 
   if (!window.kakao || !window.kakao.maps) {
     showMapLoadFail();
@@ -276,53 +292,49 @@ function initMapPage(afterReady) {
   }
 
   try {
-    if (kakaoMapReady && kakaoMap) {
-      kakaoMap.relayout();
-      kakaoMap.setCenter(new window.kakao.maps.LatLng(DEFAULT_MAP_CENTER.lat, DEFAULT_MAP_CENTER.lng));
-      if (typeof afterReady === "function") afterReady();
-      return;
-    }
-
     window.kakao.maps.load(() => {
       try {
-        canvas.innerHTML = "";
-
         const center = new window.kakao.maps.LatLng(DEFAULT_MAP_CENTER.lat, DEFAULT_MAP_CENTER.lng);
 
-        kakaoMap = new window.kakao.maps.Map(canvas, {
-          center,
-          level: 4,
-        });
+        if (!kakaoMapReady || !kakaoMap) {
+          inner.innerHTML = "";
 
+          kakaoMap = new window.kakao.maps.Map(inner, {
+            center,
+            level: 4,
+          });
+
+          kakaoMarker = new window.kakao.maps.Marker({
+            position: center,
+            map: kakaoMap,
+          });
+
+          kakaoInfoWindow = new window.kakao.maps.InfoWindow({
+            content: `<div class="mapInfoWindow">${DEFAULT_MAP_LABEL}</div>`,
+          });
+
+          kakaoInfoWindow.open(kakaoMap, kakaoMarker);
+
+          kakaoPlaces = new window.kakao.maps.services.Places();
+          kakaoGeocoder = new window.kakao.maps.services.Geocoder();
+
+          kakaoMapReady = true;
+        }
+
+        canvas.classList.add("loaded");
         kakaoMap.relayout();
-
-        kakaoMarker = new window.kakao.maps.Marker({
-          position: center,
-          map: kakaoMap,
-        });
-
-        kakaoInfoWindow = new window.kakao.maps.InfoWindow({
-          content: `<div class="mapInfoWindow">${DEFAULT_MAP_LABEL}</div>`,
-        });
-
-        kakaoInfoWindow.open(kakaoMap, kakaoMarker);
-
-        kakaoPlaces = new window.kakao.maps.services.Places();
-        kakaoGeocoder = new window.kakao.maps.services.Geocoder();
-
-        kakaoMapReady = true;
-        setMapStatus("카카오맵이 준비되었습니다. 장소 또는 주소를 검색해보세요.");
+        kakaoMap.setCenter(center);
 
         setTimeout(() => {
-          if (kakaoMap) {
-            kakaoMap.relayout();
-            kakaoMap.setCenter(center);
-          }
+          kakaoMap.relayout();
+          kakaoMap.setCenter(center);
         }, 250);
+
+        setMapStatus("카카오맵이 준비되었습니다. 장소 또는 주소를 검색해보세요.");
 
         if (typeof afterReady === "function") afterReady();
       } catch (error) {
-        setMapStatus("지도 초기화 오류입니다. JavaScript 키와 등록 도메인을 확인해주세요.");
+        setMapStatus("지도 초기화 오류입니다. JavaScript 키와 도메인 등록 상태를 확인해주세요.");
       }
     });
   } catch (error) {
@@ -332,19 +344,19 @@ function initMapPage(afterReady) {
 
 function showMapLoadFail() {
   const canvas = $("mapCanvas");
-  if (canvas) {
-    canvas.innerHTML = `
+  const loading = canvas ? canvas.querySelector(".mapLoading") : null;
+
+  if (loading) {
+    loading.innerHTML = `
       <div class="mapErrorBox">
         <strong>카카오맵을 불러오지 못했습니다.</strong>
-        <span>아래 항목을 확인해주세요.</span>
-        <small>1. 카카오 Developers 저장 완료</small>
-        <small>2. 도메인: https://icbpcctv.github.io</small>
-        <small>3. 현재 주소가 https://icbpcctv.github.io/cctv-manager/ 인지 확인</small>
+        <span>SDK 테스트에서 코드가 보이면 새로고침 후 다시 지도 탭을 눌러주세요.</span>
+        <small>도메인: https://icbpcctv.github.io</small>
       </div>
     `;
   }
 
-  setMapStatus("카카오 SDK가 로드되지 않았습니다. 화면 아래의 SDK 테스트 버튼으로 확인해보세요.");
+  setMapStatus("카카오 SDK가 아직 앱 화면에 적용되지 않았습니다. 새로고침 후 다시 시도해주세요.");
 }
 
 function searchKakaoMap() {
