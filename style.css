@@ -2591,3 +2591,17 @@ textarea {
 .mapStatusText {
   min-height: 17px;
 }
+
+
+/* =====================
+   v0.5.8 Kakao dynamic loader
+===================== */
+
+.mapStatusText {
+  min-height: 18px;
+  color: var(--accent-blue);
+}
+
+.mapCanvas {
+  isolation: isolate;
+}
