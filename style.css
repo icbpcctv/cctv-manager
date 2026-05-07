@@ -2605,3 +2605,44 @@ textarea {
 .mapCanvas {
   isolation: isolate;
 }
+
+
+/* =====================
+   v0.5.9 Kakao SDK diagnostics
+===================== */
+
+.mapActionRow.three {
+  grid-template-columns: 1fr 1fr 1fr;
+}
+
+.mapErrorBox {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: 6px;
+  padding: 18px;
+  color: var(--text-soft);
+  text-align: center;
+  background: var(--surface-soft);
+}
+
+.mapErrorBox strong {
+  color: var(--text);
+  font-size: 15px;
+  font-weight: 850;
+}
+
+.mapErrorBox span,
+.mapErrorBox small {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+@media (max-width: 390px) {
+  .mapActionRow.three {
+    grid-template-columns: 1fr;
+  }
+}
