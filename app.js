@@ -1,4 +1,4 @@
-const APP_VERSION = "0.4.7";
+const APP_VERSION = "0.4.9";
 
 const SETTINGS_KEY = "cctv_settings_v4";
 const REALTIME_KEY = "cctv_realtime_records_v2";
@@ -30,7 +30,7 @@ const DEFAULT_SETTINGS = {
 };
 
 const realtimeCategories = ["강력", "경범죄", "청소년", "재난", "교통사고", "기타"];
-const civilTypes = ["비상벨대응", "비상벨기타", "비상벨계도", "전화민원-나", "전화민원-대리"];
+const civilTypes = ["비상벨대응", "비상벨기타", "비상벨계도", "민원-나", "민원-대리", "정보공개"];
 const policeCategories = ["강력", "경범죄", "청소년", "재난", "실종", "교통사고", "기타"];
 const videoCategories = ["강도", "폭력", "절도", "성추행", "실종", "교통사고", "기타"];
 
@@ -320,12 +320,12 @@ function renderAll() {
 
 function renderHeader() {
   const shift = getShift(new Date());
-  const members = settings.teams[settings.activeTeam] || [];
+  const members = settings.teams?.[settings.activeTeam] || settings.members || [];
   const user = settings.currentUser || members[0] || "사용자 미선택";
 
   $("headerDateText").textContent = formatHeaderDate();
   $("headerShiftBadge").textContent = shift;
-  $("headerTeamName").textContent = settings.activeTeam;
+  $("headerTeamName").textContent = settings.activeTeam || settings.teamName || "1조";
   $("headerUserName").textContent = user;
   $("versionText").textContent = `현재버전 ${APP_VERSION}`;
 
@@ -413,7 +413,6 @@ function renderHomeSummary() {
   renderCivilSummary("civilSummaryTable", today, ym);
   renderPoliceSummary("policeSummaryTable", today, ym);
   renderVideoSummary("videoSummaryTable", today, ym);
-  renderInfoSummary("infoSummaryTable", today, ym);
 }
 
 function renderRealtimeSummary(tableId, today, ym) {
@@ -426,7 +425,8 @@ function renderRealtimeSummary(tableId, today, ym) {
 function renderCivilSummary(tableId, today, ym) {
   const todayValues = civilTypes.map((label) => countCivilByLabel(today, label));
   const monthValues = civilTypes.map((label) => countCivilByMonthLabel(ym, label));
-  renderMatrixTable(tableId, civilTypes, [["오늘", ...todayValues, sum(todayValues)]]);
+
+  renderMatrixTable(tableId, civilTypes, [["오늘", ...todayValues]], { showTotal: false });
   setMonthHint("civilMonthHint", `이번달 누계 <strong>${sum(monthValues)}</strong>건`);
 }
 
@@ -459,19 +459,27 @@ function setMonthHint(id, html) {
 }
 
 function countCivilByLabel(date, label) {
+  if (label === "정보공개") {
+    return infoRecords.filter((r) => r.date === date).length;
+  }
+
   return civilRecords.filter((r) => {
     if (r.date !== date) return false;
-    if (label === "전화민원-나") return r.type === "전화민원" && r.phoneOwner === "나";
-    if (label === "전화민원-대리") return r.type === "전화민원" && r.phoneOwner === "대리";
+    if (label === "민원-나") return r.type === "전화민원" && r.phoneOwner === "나";
+    if (label === "민원-대리") return r.type === "전화민원" && r.phoneOwner === "대리";
     return r.type === label;
   }).length;
 }
 
 function countCivilByMonthLabel(ym, label) {
+  if (label === "정보공개") {
+    return infoRecords.filter((r) => r.date.startsWith(ym)).length;
+  }
+
   return civilRecords.filter((r) => {
     if (!r.date.startsWith(ym)) return false;
-    if (label === "전화민원-나") return r.type === "전화민원" && r.phoneOwner === "나";
-    if (label === "전화민원-대리") return r.type === "전화민원" && r.phoneOwner === "대리";
+    if (label === "민원-나") return r.type === "전화민원" && r.phoneOwner === "나";
+    if (label === "민원-대리") return r.type === "전화민원" && r.phoneOwner === "대리";
     return r.type === label;
   }).length;
 }
@@ -480,7 +488,7 @@ function formatVideoCount(list) {
   const view = list.filter((r) => r.process === "열람").length;
   const copy = list.filter((r) => r.process === "복제").length;
   return {
-    html: `${list.length}(<span class="viewCount">${view}</span>/<span class="copyCount">${copy}</span>)`,
+    html: `${list.length} (<span class="viewCount">${view}</span>/<span class="copyCount">${copy}</span>)`,
   };
 }
 
@@ -517,7 +525,7 @@ function renderDestroyHome() {
 }
 
 function civilTitle(r) {
-  if (r.type === "전화민원") return `전화민원-${r.phoneOwner || "나"}`;
+  if (r.type === "전화민원") return `민원-${r.phoneOwner || "나"}`;
   return r.type;
 }
 
@@ -527,7 +535,6 @@ function renderMonthPage() {
   renderMonthlyPolice(key);
   renderMonthlyVideo(key);
   renderMonthlyCivil(key);
-  renderMonthlyInfo(key);
   renderMonthlyRealtime(key);
   renderMonthlySpecials(key);
   renderMonthlyDocs(key);
@@ -571,7 +578,7 @@ function renderMonthlyVideo(key) {
 
 function renderMonthlyCivil(key) {
   const values = civilTypes.map((label) => countCivilByPeriodLabel(key, label));
-  renderMatrixTable("monthCivilTable", civilTypes, [["누계", ...values, sum(values)]]);
+  renderMatrixTable("monthCivilTable", civilTypes, [["누계", ...values]], { showTotal: false });
 }
 
 function renderMonthlyInfo(key) {
@@ -585,10 +592,14 @@ function renderMonthlyRealtime(key) {
 }
 
 function countCivilByPeriodLabel(key, label) {
+  if (label === "정보공개") {
+    return infoRecords.filter((r) => r.date.startsWith(key)).length;
+  }
+
   return civilRecords.filter((r) => {
     if (!r.date.startsWith(key)) return false;
-    if (label === "전화민원-나") return r.type === "전화민원" && r.phoneOwner === "나";
-    if (label === "전화민원-대리") return r.type === "전화민원" && r.phoneOwner === "대리";
+    if (label === "민원-나") return r.type === "전화민원" && r.phoneOwner === "나";
+    if (label === "민원-대리") return r.type === "전화민원" && r.phoneOwner === "대리";
     return r.type === label;
   }).length;
 }
@@ -624,7 +635,7 @@ function openInputModal(type) {
   const now = timeString();
 
   if (type === "realtime") {
-    $("modalTitle").textContent = "실시간실적 입력";
+    $("modalTitle").textContent = "실시간 개인실적 입력";
     $("formRealtime").classList.add("active");
     $("rtDate").value = today;
     $("rtStartTime").value = now;
@@ -981,7 +992,7 @@ function csv(value) {
 
 function collectPeriodItems(key) {
   return [
-    ...realtimeRecords.filter((r) => r.date.startsWith(key)).map((item) => ({ group: "실시간실적", item })),
+    ...realtimeRecords.filter((r) => r.date.startsWith(key)).map((item) => ({ group: "실시간 개인실적", item })),
     ...civilRecords.filter((r) => r.date.startsWith(key)).map((item) => ({ group: "민원처리", item })),
     ...policeRecords.filter((r) => r.date.startsWith(key)).map((item) => ({ group: "경찰관제요청", item })),
     ...videoRecords.filter((r) => r.date.startsWith(key)).map((item) => ({ group: "영상열람반출", item })),
@@ -999,17 +1010,19 @@ function sum(values) {
   return values.reduce((total, value) => total + Number(value || 0), 0);
 }
 
-function renderMatrixTable(tableId, categories, rows) {
-  const headers = ["구분", ...categories, "합계"];
+function renderMatrixTable(tableId, categories, rows, options = {}) {
+  const showTotal = options.showTotal !== false;
+  const headers = showTotal ? ["구분", ...categories, "합계"] : ["구분", ...categories];
   const table = $(tableId);
+
   table.innerHTML = `
     <thead>
-      <tr>${headers.map((header, idx) => `<th class="${idx === 0 ? "" : "num"}">${escapeHtml(header)}</th>`).join("")}</tr>
+      <tr>${headers.map((header, idx) => `<th class="${idx === 0 ? "" : "num"} ${showTotal && idx === headers.length - 1 ? "totalCol" : ""}">${escapeHtml(header)}</th>`).join("")}</tr>
     </thead>
     <tbody>
       ${rows.map((row) => `
         <tr class="${row[0] === "월누계" || row[0] === "누계" ? "total" : ""}">
-          ${row.map((cell, idx) => `<td class="${idx === 0 ? "matrixRowHead" : "num"}">${cellHtml(cell)}</td>`).join("")}
+          ${row.map((cell, idx) => `<td class="${idx === 0 ? "matrixRowHead" : "num"} ${showTotal && idx === row.length - 1 ? "totalCol" : ""}">${cellHtml(cell)}</td>`).join("")}
         </tr>
       `).join("")}
     </tbody>

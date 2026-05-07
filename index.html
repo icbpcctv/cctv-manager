@@ -10,14 +10,17 @@
   <main class="app">
 
     <header class="appHeader">
-      <div class="appHeaderLine singleLineHeader">
+      <div class="headerLeft">
         <h1>CCTV MANAGER</h1>
-        <div class="headerMeta compactHeaderMeta">
+        <div class="headerSub">
           <span id="headerDateText">날짜</span>
           <span id="headerShiftBadge" class="shiftBadge">근무</span>
-          <span id="headerTeamName" class="teamBadge">1조</span>
-          <span id="headerUserName" class="memberInline">사용자</span>
         </div>
+      </div>
+
+      <div class="headerRight">
+        <span id="headerTeamName" class="teamBadge">1조</span>
+        <strong id="headerUserName" class="userName">사용자</strong>
       </div>
     </header>
 
@@ -27,7 +30,7 @@
       </section>
 
       <div class="statusBlock">
-        <div class="statusHeader"><h3>실시간실적</h3></div>
+        <div class="statusHeader"><h3>실시간 개인실적</h3></div>
         <div class="tableWrap compactMatrix"><table id="realtimeSummaryTable"></table></div>
         <p id="realtimeMonthHint" class="monthHint"></p>
       </div>
@@ -50,18 +53,13 @@
         <p id="videoMonthHint" class="monthHint"></p>
       </div>
 
-      <div class="statusBlock">
-        <div class="statusHeader"><h3>정보공개</h3></div>
-        <div class="tableWrap compactMatrix"><table id="infoSummaryTable"></table></div>
-        <p id="infoMonthHint" class="monthHint"></p>
-      </div>
 
-      <section class="sectionTitle">
-        <h2>오늘 발생 세부내용</h2>
+      <section class="sectionTitle detailSectionTitle">
+        <h2>오늘 세부</h2>
       </section>
 
       <div class="detailBlock">
-        <h3>실시간실적</h3>
+        <h3>실시간 개인실적</h3>
         <div class="wideScroll detailTable"><table id="realtimeTodayTable"></table></div>
       </div>
 
@@ -71,7 +69,7 @@
       </div>
 
       <div class="detailBlock">
-        <h3>민원내용</h3>
+        <h3>민원</h3>
         <div class="wideScroll detailTable"><table id="civilTodayTable"></table></div>
       </div>
 
@@ -131,10 +129,6 @@
         <div class="tableWrap compactMatrix"><table id="monthCivilTable"></table></div>
       </div>
 
-      <div class="statusBlock">
-        <div class="statusHeader"><h3>정보공개</h3></div>
-        <div class="tableWrap compactMatrix"><table id="monthInfoTable"></table></div>
-      </div>
 
       <div class="statusBlock">
         <div class="statusHeader"><h3>개인실적</h3></div>
@@ -399,11 +393,11 @@
             <option>비상벨대응</option>
             <option>비상벨계도</option>
             <option>비상벨기타</option>
-            <option>전화민원</option>
+            <option value="전화민원">민원</option>
           </select>
 
           <div id="civilPhoneOwnerGroup">
-            <label for="civilPhoneOwner">전화민원 처리자 구분</label>
+            <label for="civilPhoneOwner">민원 처리자 구분</label>
             <select id="civilPhoneOwner">
               <option value="나">나</option>
               <option value="대리">대리</option>
