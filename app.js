@@ -1,4 +1,4 @@
-const APP_VERSION = "0.6.0";
+const APP_VERSION = "0.6.2";
 const KAKAO_EXTERNAL_MAP_URL = "https://map.kakao.com/";
 const DEFAULT_MAP_CENTER = { lat: 37.5070, lng: 126.7218 };
 const DEFAULT_MAP_LABEL = "부평구청";
@@ -231,7 +231,7 @@ function bindMapControls() {
   const searchInput = $("mapSearchInput");
   const currentBtn = $("mapCurrentBtn");
   const externalBtn = $("mapOpenExternalBtn");
-  const sdkTestBtn = $("mapSdkTestBtn");
+  const locateFloatBtn = $("mapLocateFloat");
 
   if (searchBtn) {
     searchBtn.addEventListener("click", searchKakaoMap);
@@ -260,11 +260,37 @@ function bindMapControls() {
     });
   }
 
-  if (sdkTestBtn) {
-    sdkTestBtn.addEventListener("click", () => {
-      window.open("https://dapi.kakao.com/v2/maps/sdk.js?appkey=e21597a0eebbb3884d925f38a48b41f4&libraries=services&autoload=false", "_blank", "noopener,noreferrer");
-    });
+  if (locateFloatBtn) {
+    locateFloatBtn.addEventListener("click", moveToCurrentLocation);
   }
+}
+
+function moveToCurrentLocation() {
+  if (!navigator.geolocation) {
+    setMapStatus("이 브라우저에서는 현재 위치 기능을 사용할 수 없습니다.");
+    return;
+  }
+
+  setMapStatus("현재 위치를 확인하는 중입니다.");
+
+  navigator.geolocation.getCurrentPosition(
+    (position) => {
+      const lat = position.coords.latitude;
+      const lng = position.coords.longitude;
+
+      initMapPage(() => {
+        moveKakaoMap(lat, lng, "현재 위치");
+      });
+    },
+    () => {
+      setMapStatus("현재 위치 권한이 거부되었거나 위치를 가져오지 못했습니다.");
+    },
+    {
+      enableHighAccuracy: true,
+      timeout: 8000,
+      maximumAge: 60000,
+    },
+  );
 }
 
 function initMapPage(afterReady) {
@@ -281,6 +307,7 @@ function initMapPage(afterReady) {
   }
 
   const rect = canvas.getBoundingClientRect();
+
   if (!rect.width || !rect.height) {
     setTimeout(() => initMapPage(afterReady), 180);
     return;
@@ -294,47 +321,59 @@ function initMapPage(afterReady) {
   try {
     window.kakao.maps.load(() => {
       try {
-        const center = new window.kakao.maps.LatLng(DEFAULT_MAP_CENTER.lat, DEFAULT_MAP_CENTER.lng);
+        if (kakaoMapReady && kakaoMap) {
+          canvas.classList.add("loaded");
+          kakaoMap.relayout();
 
-        if (!kakaoMapReady || !kakaoMap) {
-          inner.innerHTML = "";
+          if (typeof afterReady === "function") {
+            afterReady();
+          }
 
-          kakaoMap = new window.kakao.maps.Map(inner, {
-            center,
-            level: 4,
-          });
-
-          kakaoMarker = new window.kakao.maps.Marker({
-            position: center,
-            map: kakaoMap,
-          });
-
-          kakaoInfoWindow = new window.kakao.maps.InfoWindow({
-            content: `<div class="mapInfoWindow">${DEFAULT_MAP_LABEL}</div>`,
-          });
-
-          kakaoInfoWindow.open(kakaoMap, kakaoMarker);
-
-          kakaoPlaces = new window.kakao.maps.services.Places();
-          kakaoGeocoder = new window.kakao.maps.services.Geocoder();
-
-          kakaoMapReady = true;
+          return;
         }
 
+        const center = new window.kakao.maps.LatLng(DEFAULT_MAP_CENTER.lat, DEFAULT_MAP_CENTER.lng);
+
+        inner.innerHTML = "";
+
+        kakaoMap = new window.kakao.maps.Map(inner, {
+          center,
+          level: 4,
+        });
+
+        kakaoMarker = new window.kakao.maps.Marker({
+          position: center,
+          map: kakaoMap,
+        });
+
+        kakaoInfoWindow = new window.kakao.maps.InfoWindow({
+          content: `<div class="mapInfoWindow">${DEFAULT_MAP_LABEL}</div>`,
+        });
+
+        kakaoInfoWindow.open(kakaoMap, kakaoMarker);
+
+        kakaoPlaces = new window.kakao.maps.services.Places();
+        kakaoGeocoder = new window.kakao.maps.services.Geocoder();
+
+        kakaoMapReady = true;
         canvas.classList.add("loaded");
+
         kakaoMap.relayout();
         kakaoMap.setCenter(center);
 
         setTimeout(() => {
-          kakaoMap.relayout();
-          kakaoMap.setCenter(center);
+          if (kakaoMap) {
+            kakaoMap.relayout();
+          }
         }, 250);
 
         setMapStatus("카카오맵이 준비되었습니다. 장소 또는 주소를 검색해보세요.");
 
-        if (typeof afterReady === "function") afterReady();
+        if (typeof afterReady === "function") {
+          afterReady();
+        }
       } catch (error) {
-        setMapStatus("지도 초기화 오류입니다. JavaScript 키와 도메인 등록 상태를 확인해주세요.");
+        setMapStatus("지도 초기화 오류입니다. JavaScript 키와 등록 도메인을 확인해주세요.");
       }
     });
   } catch (error) {
