@@ -1,4 +1,4 @@
-const APP_VERSION = "0.6.8";
+const APP_VERSION = "0.6.9";
 const KAKAO_EXTERNAL_MAP_URL = "https://map.kakao.com/";
 const DEFAULT_MAP_CENTER = { lat: 37.5070, lng: 126.7218 };
 const DEFAULT_MAP_LABEL = "부평구청";

@@ -3007,3 +3007,164 @@ textarea {
     font-size: 10.8px !important;
   }
 }
+
+
+/* =====================
+   v0.6.9 header/month control fix
+===================== */
+
+/* 상단 카드: 제목/로고 겹침 방지 */
+.appHeader {
+  grid-template-columns: minmax(0, 1fr) 58px minmax(70px, 0.75fr) !important;
+  gap: 6px !important;
+  padding: 13px 14px !important;
+}
+
+.headerLeft {
+  min-width: 0 !important;
+  overflow: hidden !important;
+}
+
+.headerLeft h1 {
+  max-width: 100% !important;
+  font-size: 19px !important;
+  line-height: 1.05 !important;
+  letter-spacing: -0.7px !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+
+.headerSub {
+  margin: 6px 0 0 !important;
+  gap: 6px !important;
+  font-size: 12px !important;
+  overflow: hidden !important;
+}
+
+.headerCenter {
+  width: 58px !important;
+  min-width: 58px !important;
+  justify-self: center !important;
+}
+
+.headerCenter .appLogo,
+.appLogo {
+  width: 58px !important;
+  max-width: 58px !important;
+  height: auto !important;
+  object-fit: contain !important;
+}
+
+.headerRight {
+  min-width: 70px !important;
+}
+
+.userName {
+  max-width: 78px !important;
+  font-size: 14px !important;
+}
+
+.teamBadge {
+  font-size: 11.5px !important;
+}
+
+/* 월검색: 좌우 화살표가 월 입력칸과 겹치지 않게 고정 그리드 */
+.monthControl.compactMonthControl {
+  display: grid !important;
+  grid-template-columns: 42px minmax(0, 1fr) 42px !important;
+  align-items: center !important;
+  gap: 7px !important;
+  padding: 9px !important;
+}
+
+.monthControl.compactMonthControl > button {
+  width: 42px !important;
+  height: 42px !important;
+  min-width: 42px !important;
+  display: grid !important;
+  place-items: center !important;
+  padding: 0 !important;
+  line-height: 1 !important;
+  font-size: 22px !important;
+  border-radius: 14px !important;
+}
+
+.periodPickerBox {
+  min-width: 0 !important;
+  width: 100% !important;
+  display: grid !important;
+  grid-template-columns: 58px minmax(0, 1fr) !important;
+  gap: 7px !important;
+  align-items: center !important;
+}
+
+.periodPickerBox select,
+.periodPickerBox input {
+  width: 100% !important;
+  min-width: 0 !important;
+  height: 42px !important;
+  box-sizing: border-box !important;
+  padding: 8px 9px !important;
+  font-size: 14px !important;
+}
+
+#periodMonthPicker {
+  text-align: center !important;
+}
+
+/* 좁은 화면 보정 */
+@media (max-width: 390px) {
+  .appHeader {
+    grid-template-columns: minmax(0, 1fr) 50px minmax(64px, 0.7fr) !important;
+    gap: 5px !important;
+    padding: 12px !important;
+  }
+
+  .headerLeft h1 {
+    font-size: 17px !important;
+    letter-spacing: -0.8px !important;
+  }
+
+  .headerSub {
+    font-size: 11.5px !important;
+    gap: 5px !important;
+  }
+
+  .headerCenter,
+  .headerCenter .appLogo,
+  .appLogo {
+    width: 50px !important;
+    max-width: 50px !important;
+  }
+
+  .userName {
+    max-width: 68px !important;
+    font-size: 13px !important;
+  }
+
+  .monthControl.compactMonthControl {
+    grid-template-columns: 38px minmax(0, 1fr) 38px !important;
+    gap: 6px !important;
+    padding: 8px !important;
+  }
+
+  .monthControl.compactMonthControl > button {
+    width: 38px !important;
+    height: 38px !important;
+    min-width: 38px !important;
+    font-size: 20px !important;
+  }
+
+  .periodPickerBox {
+    grid-template-columns: 52px minmax(0, 1fr) !important;
+    gap: 6px !important;
+  }
+
+  .periodPickerBox select,
+  .periodPickerBox input {
+    height: 38px !important;
+    font-size: 13px !important;
+    padding: 7px 8px !important;
+  }
+}
