@@ -1,4 +1,4 @@
-const APP_VERSION = "0.6.3";
+const APP_VERSION = "0.6.2";
 const KAKAO_EXTERNAL_MAP_URL = "https://map.kakao.com/";
 const DEFAULT_MAP_CENTER = { lat: 37.5070, lng: 126.7218 };
 const DEFAULT_MAP_LABEL = "부평구청";
@@ -67,7 +67,6 @@ function init() {
   bindListModal();
   bindForms();
   bindDynamicForms();
-  bindUppercaseManageInputs();
   bindMonth();
   bindBackup();
   bindSettings();
@@ -570,26 +569,9 @@ function bindDynamicForms() {
   $("civilPhoneOwner").addEventListener("change", updateCivilFields);
   $("videoApprovalCheck").addEventListener("change", updateVideoFields);
   $("videoDestroyCheck").addEventListener("change", updateVideoFields);
-  $("policeAgency").addEventListener("change", updatePoliceAgencyFields);
 }
 
-function bindUppercaseManageInputs() {
-  ["rtManageNo", "civilManageNo", "policeManageNo", "infoManageNo"].forEach((id) => {
-    const input = $(id);
-    if (!input) return;
-
-    input.addEventListener("input", () => {
-      const start = input.selectionStart;
-      const end = input.selectionEnd;
-      input.value = input.value.toUpperCase();
-      try {
-        input.setSelectionRange(start, end);
-      } catch (error) {}
-    });
-  });
-}
-
-function bindMonth {
+function bindMonth() {
   $("prevPeriodBtn").addEventListener("click", () => {
     const mode = $("periodMode").value;
     if (mode === "month") currentPeriodDate.setMonth(currentPeriodDate.getMonth() - 1);
@@ -791,7 +773,7 @@ function renderVideoSummary(tableId, today, ym) {
   renderMatrixTable(tableId, videoCategories, [
     ["오늘", ...todayValues, formatVideoCount(videoRecords.filter((r) => r.date === today))],
   ], { hideLabelColumn: true, cellListKey: "homeVideo" });
-  setMonthHint("videoMonthHint", `이번달 누계 <strong>${cellHtml(formatVideoCount(videoRecords.filter((r) => r.date.startsWith(ym))))}건</strong>`);
+  setMonthHint("videoMonthHint", `이번달 누계 <strong>${cellHtml(formatVideoCount(videoRecords.filter((r) => r.date.startsWith(ym))))}</strong>`);
 }
 
 function renderInfoSummary(tableId, today, ym) {
@@ -873,7 +855,7 @@ function renderDestroyHome() {
 }
 
 function civilTitle(r) {
-  if (r.type === "전화민원") return `민원(${r.phoneOwner || "나"})`;
+  if (r.type === "전화민원") return `민원-${r.phoneOwner || "나"}`;
   return r.type;
 }
 
@@ -901,7 +883,7 @@ function renderMonthlyDaily(key) {
 
   renderMatrixTable(
     "monthDailyTable",
-    ["개인실적 합", "민원처리 합", "경찰관제 합", "열람복제 합", "정보공개 합"],
+    ["개인실적", "민원", "경찰관제", "열람복제", "정보공개"],
     [["누계", realtime, civil, police, video, info]],
     { showTotal: false, hideLabelColumn: true, cellListKey: "monthDaily" },
   );
@@ -1000,7 +982,7 @@ function getListPayload(key, options = {}) {
     homeRealtime: { title: "오늘 실시간 개인실적", refs: realtimeRecords.filter((r) => r.date === today).map((item) => ref("realtime", item)) },
     homePolice: { title: "오늘 경찰관제요청", refs: policeRecords.filter((r) => r.date === today).map((item) => ref("police", item)) },
     homeVideo: { title: "오늘 영상열람반출", refs: videoRecords.filter((r) => r.date === today).map((item) => ref("video", item)) },
-    homeCivil: { title: "오늘 민원처리 세부", refs: [...civilRecords.filter((r) => r.date === today).map((item) => ref("civil", item)), ...infoRecords.filter((r) => r.date === today).map((item) => ref("info", item))] },
+    homeCivil: { title: "오늘 민원", refs: [...civilRecords.filter((r) => r.date === today).map((item) => ref("civil", item)), ...infoRecords.filter((r) => r.date === today).map((item) => ref("info", item))] },
     homeApproval: { title: "사후결재", refs: videoRecords.filter((r) => r.approval && !r.approval.completed).map((item) => ref("video", item, "사후결재")) },
     homeDestroy: { title: "파기공문", refs: videoRecords.filter((r) => r.destroy && !r.destroy.completed).map((item) => ref("video", item, "파기공문")) },
     monthRealtime: { title: "실시간 개인실적", refs: realtimeRecords.filter((r) => r.date.startsWith(period)).map((item) => ref("realtime", item)) },
@@ -1024,11 +1006,7 @@ function filterRefsByCategory(refs, category) {
   if (!category) return refs;
 
   return refs.filter(({ type, item }) => {
-    if (category === "정보공개" || category === "정보공개 합") return type === "info";
-    if (category === "개인실적 합") return type === "realtime";
-    if (category === "민원처리 합") return type === "civil";
-    if (category === "경찰관제 합") return type === "police";
-    if (category === "열람복제 합") return type === "video";
+    if (category === "정보공개") return type === "info";
     if (category === "민원-나") return type === "civil" && item.type === "전화민원" && item.phoneOwner === "나";
     if (category === "민원-대리") return type === "civil" && item.type === "전화민원" && item.phoneOwner === "대리";
     if (type === "civil") return item.type === category;
@@ -1039,11 +1017,11 @@ function filterRefsByCategory(refs, category) {
 function getDailyPayload(period, category = "") {
   if (category) {
     const refsByCategory = {
-      "개인실적 합": realtimeRecords.filter((r) => r.date.startsWith(period)).map((item) => ref("realtime", item)),
-      "민원처리 합": civilRecords.filter((r) => r.date.startsWith(period)).map((item) => ref("civil", item)),
-      "경찰관제 합": policeRecords.filter((r) => r.date.startsWith(period)).map((item) => ref("police", item)),
-      "열람복제 합": videoRecords.filter((r) => r.date.startsWith(period)).map((item) => ref("video", item)),
-      "정보공개 합": infoRecords.filter((r) => r.date.startsWith(period)).map((item) => ref("info", item)),
+      "개인실적": realtimeRecords.filter((r) => r.date.startsWith(period)).map((item) => ref("realtime", item)),
+      "민원": civilRecords.filter((r) => r.date.startsWith(period)).map((item) => ref("civil", item)),
+      "경찰관제": policeRecords.filter((r) => r.date.startsWith(period)).map((item) => ref("police", item)),
+      "열람복제": videoRecords.filter((r) => r.date.startsWith(period)).map((item) => ref("video", item)),
+      "정보공개": infoRecords.filter((r) => r.date.startsWith(period)).map((item) => ref("info", item)),
     };
     return { title: `일자별 현황 · ${category}`, html: renderRecordList(refsByCategory[category] || []) };
   }
@@ -1061,7 +1039,7 @@ function getDailyPayload(period, category = "") {
     const vi = videoRecords.filter((r) => r.date === date).length;
     const inf = infoRecords.filter((r) => r.date === date).length;
 
-    return `<button class="dateSummaryCard" type="button" data-date-detail="${escapeHtml(date)}"><strong>${escapeHtml(date)}</strong><span>개인 ${rt}</span><span>민원처리 ${cv}</span><span>경찰 ${po}</span><span>영상 ${vi}</span><span>정보 ${inf}</span></button>`;
+    return `<button class="dateSummaryCard" type="button" data-date-detail="${escapeHtml(date)}"><strong>${escapeHtml(date)}</strong><span>개인 ${rt}</span><span>민원 ${cv}</span><span>경찰 ${po}</span><span>영상 ${vi}</span><span>정보 ${inf}</span></button>`;
   }).join("");
 
   return { title: "일자별 현황", html };
@@ -1156,7 +1134,7 @@ function openInputModal(type, record = null) {
     $("policeDate").value = record?.date || today;
     $("policeTime").value = record?.time || now;
     $("policeCategory").value = record?.category || "강력";
-    setPoliceAgencyValue(record?.agency || "부평상황실");
+    $("policeAgency").value = record?.agency || "119";
     $("policeManageNo").value = record?.manageNo || "";
     $("policeLocation").value = record?.location || "";
     $("policeContent").value = record?.content || "";
@@ -1223,37 +1201,9 @@ function updateCivilFields() {
   show("civilProxyGroup", type === "전화민원" && owner === "대리");
   show("civilComplainantGroup", type === "전화민원");
   show("civilManageGroup", true);
-  show("civilLocationGroup", type === "비상벨대응");
+  show("civilLocationGroup", type === "비상벨대응" || type === "비상벨계도");
   show("civilContentGroup", true);
   show("civilActionGroup", type === "비상벨대응" || type === "전화민원");
-}
-
-function setPoliceAgencyValue(value) {
-  const select = $("policeAgency");
-  const direct = $("policeAgencyDirect");
-
-  if (!select || !direct) return;
-
-  const optionValues = Array.from(select.options).map((option) => option.value || option.textContent);
-
-  if (optionValues.includes(value)) {
-    select.value = value;
-    direct.value = "";
-  } else {
-    select.value = "직접입력";
-    direct.value = value || "";
-  }
-
-  updatePoliceAgencyFields();
-}
-
-function updatePoliceAgencyFields() {
-  const select = $("policeAgency");
-  const directGroup = $("policeAgencyDirectGroup");
-
-  if (!select || !directGroup) return;
-
-  directGroup.classList.toggle("hidden", select.value !== "직접입력");
 }
 
 function updateVideoFields() {
@@ -1329,7 +1279,7 @@ function savePoliceRecord(e) {
     date: $("policeDate").value || todayString(),
     time: $("policeTime").value || timeString(),
     category: $("policeCategory").value,
-    agency: $("policeAgency").value === "직접입력" ? $("policeAgencyDirect").value.trim() : $("policeAgency").value,
+    agency: $("policeAgency").value,
     manageNo: $("policeManageNo").value.trim(),
     location: $("policeLocation").value.trim(),
     content: $("policeContent").value.trim(),
@@ -1603,9 +1553,8 @@ function labelHtml(value, mode = "default") {
       "비상벨대응": "비상벨<br>대응",
       "비상벨기타": "비상벨<br>기타",
       "비상벨계도": "비상벨<br>계도",
-      "민원-나": "민원<br>(나)",
-      "민원-대리": "민원<br>(대리)",
-      "정보공개": "정보<br>공개",
+      "민원-나": "민원<br>나",
+      "민원-대리": "민원<br>대리",
     };
 
     return civilMap[label] || escapeHtml(label);
