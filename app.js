@@ -1,4 +1,4 @@
-const APP_VERSION = "0.7.2";
+const APP_VERSION = "0.7.3";
 const KAKAO_EXTERNAL_MAP_URL = "https://map.kakao.com/";
 const DEFAULT_MAP_CENTER = { lat: 37.5070, lng: 126.7218 };
 const DEFAULT_MAP_LABEL = "부평구청";
@@ -558,6 +558,7 @@ function closeQuickDial() {
 }
 
 function bindForms() {
+  $("deleteRecordBtn").addEventListener("click", deleteCurrentRecord);
   $("formRealtime").addEventListener("submit", saveRealtimeRecord);
   $("formCivil").addEventListener("submit", saveCivilRecord);
   $("formPolice").addEventListener("submit", savePoliceRecord);
@@ -638,6 +639,7 @@ function bindMonth() {
 function bindBackup() {
   $("backupExportBtn").addEventListener("click", exportBackup);
   $("backupImportInput").addEventListener("change", importBackup);
+  $("resetDataBtn").addEventListener("click", resetAllRecords);
 }
 
 function bindSettings() {
@@ -1128,6 +1130,7 @@ function openInputModal(type, record = null) {
   });
 
   editState = record ? { type, id: record.id } : null;
+  toggleDeleteButton(!!record);
 
   const today = todayString();
   const now = timeString();
@@ -1227,6 +1230,65 @@ function openInputModal(type, record = null) {
 function closeInputModal() {
   $("inputModal").classList.remove("show");
   editState = null;
+  toggleDeleteButton(false);
+}
+
+function toggleDeleteButton(visible) {
+  const button = $("deleteRecordBtn");
+  if (!button) return;
+  button.classList.toggle("hidden", !visible);
+}
+
+function getRecordListByType(type) {
+  return {
+    realtime: realtimeRecords,
+    civil: civilRecords,
+    police: policeRecords,
+    video: videoRecords,
+    info: infoRecords,
+  }[type] || null;
+}
+
+function deleteCurrentRecord() {
+  if (!editState || !editState.type || !editState.id) return;
+
+  const labels = {
+    realtime: "실시간 개인실적",
+    civil: "민원처리",
+    police: "경찰관제요청",
+    video: "영상열람반출",
+    info: "정보공개",
+  };
+
+  const label = labels[editState.type] || "기록";
+  const ok = confirm(`${label} 기록을 삭제할까요?\n삭제 후에는 복구할 수 없습니다.`);
+  if (!ok) return;
+
+  const list = getRecordListByType(editState.type);
+  if (!list) return;
+
+  const before = list.length;
+  const filtered = list.filter((item) => item.id !== editState.id);
+
+  if (editState.type === "realtime") realtimeRecords = filtered;
+  if (editState.type === "civil") civilRecords = filtered;
+  if (editState.type === "police") policeRecords = filtered;
+  if (editState.type === "video") videoRecords = filtered;
+  if (editState.type === "info") infoRecords = filtered;
+
+  personalSpecials = personalSpecials.filter((item) => item.sourceId !== editState.id && item.id !== editState.id);
+  teamSpecials = teamSpecials.filter((item) => item.sourceId !== editState.id && item.id !== editState.id);
+
+  if (before === filtered.length) {
+    alert("삭제할 기록을 찾지 못했습니다.");
+    return;
+  }
+
+  saveAll();
+  closeInputModal();
+  closeListModal();
+  renderAll();
+  alert("삭제되었습니다.");
 }
 
 function updateCivilFields() {
@@ -1553,6 +1615,29 @@ function importBackup(e) {
 
 function ensureIds(list) {
   return list.map((item) => ({ ...item, id: item.id || makeId() }));
+}
+
+function resetAllRecords() {
+  const typed = prompt('모든 입력 기록을 삭제합니다. 계속하려면 "초기화"라고 입력하세요.');
+  if (typed !== "초기화") {
+    alert("초기화가 취소되었습니다.");
+    return;
+  }
+
+  const ok = confirm("실시간 개인실적, 민원처리, 경찰관제요청, 영상열람반출, 정보공개, 특이사항 기록을 모두 삭제할까요?\n근무조/테마/근무패턴 설정은 유지됩니다.");
+  if (!ok) return;
+
+  realtimeRecords = [];
+  civilRecords = [];
+  policeRecords = [];
+  videoRecords = [];
+  infoRecords = [];
+  personalSpecials = [];
+  teamSpecials = [];
+
+  saveAll();
+  renderAll();
+  alert("입력 기록이 모두 초기화되었습니다.");
 }
 
 function renderBackupInfo() {

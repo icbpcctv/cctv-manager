@@ -296,12 +296,13 @@
 
       <div class="panel">
         <h2>데이터 관리</h2>
-        <div class="actionList">
-          <button id="backupExportBtn" type="button">백업하기</button>
+        <div class="actionList dataActionList">
+          <button id="backupExportBtn" type="button">백업</button>
           <label class="fileButton">
-            백업 복원
+            백업복구
             <input id="backupImportInput" type="file" accept="application/json" />
           </label>
+          <button id="resetDataBtn" class="dangerButton" type="button">초기화</button>
         </div>
         <p id="backupText" class="hintText">백업 정보 없음</p>
       </div>
@@ -687,6 +688,10 @@
 
           <button class="saveBtn" type="submit">저장</button>
         </form>
+      </div>
+
+      <div class="inputDeleteWrap">
+        <button id="deleteRecordBtn" class="deleteRecordBtn hidden" type="button">삭제</button>
       </div>
     </div>
   </div>
