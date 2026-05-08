@@ -11,14 +11,15 @@
 
     <header class="appHeader">
       <div class="headerLeft">
-        <div class="appTitleRow">
-          <img class="appLogo" src="logo-bupyeong.png" alt="부평구 로고" />
-          <h1>CCTV MANAGER</h1>
-        </div>
+        <h1>CCTV MANAGER</h1>
         <div class="headerSub">
           <span id="headerDateText">날짜</span>
           <span id="headerShiftBadge" class="shiftBadge">근무</span>
         </div>
+      </div>
+
+      <div class="headerCenter">
+        <img class="appLogo" src="logo-bupyeong.png" alt="부평구 로고" />
       </div>
 
       <div class="headerRight">
@@ -68,7 +69,7 @@
       </div>
 
       <div class="detailBlock">
-        <div class="detailHeader"><h3>민원</h3><button class="moreBtn small" type="button" data-list-key="homeCivil">+</button></div>
+        <div class="detailHeader"><h3>민원처리</h3><button class="moreBtn small" type="button" data-list-key="homeCivil">+</button></div>
         <div class="wideScroll detailTable"><table id="civilTodayTable"></table></div>
       </div>
 
@@ -108,30 +109,39 @@
         <h2>월현황</h2>
       </section>
 
-      <div class="statusBlock clickableStatus" data-list-key="monthDaily">
-        <div class="statusHeader"><h3>일자별 현황</h3><button class="moreBtn" type="button" data-list-key="monthDaily">+</button></div>
-        <div class="tableWrap compactMatrix"><table id="monthDailyTable"></table></div>
+
+
+      <div class="statusBlock clickableStatus" data-list-key="monthRealtime">
+        <div class="statusHeader"><h3>개인실적 합</h3><button class="moreBtn" type="button" data-list-key="monthRealtime">+</button></div>
+        <div class="tableWrap compactMatrix"><table id="monthRealtimeTable"></table></div>
       </div>
 
+
+
       <div class="statusBlock clickableStatus" data-list-key="monthPolice">
-        <div class="statusHeader"><h3>경찰관제요청</h3><button class="moreBtn" type="button" data-list-key="monthPolice">+</button></div>
+        <div class="statusHeader"><h3>경찰관제요청 합</h3><button class="moreBtn" type="button" data-list-key="monthPolice">+</button></div>
         <div class="tableWrap compactMatrix"><table id="monthPoliceTable"></table></div>
       </div>
 
+
+
       <div class="statusBlock clickableStatus" data-list-key="monthVideo">
-        <div class="statusHeader"><h3>영상열람반출</h3><button class="moreBtn" type="button" data-list-key="monthVideo">+</button></div>
+        <div class="statusHeader"><h3>영상열람반출 합</h3><button class="moreBtn" type="button" data-list-key="monthVideo">+</button></div>
         <div class="tableWrap compactMatrix"><table id="monthVideoTable"></table></div>
       </div>
 
+
+
       <div class="statusBlock clickableStatus" data-list-key="monthCivil">
-        <div class="statusHeader"><h3>민원처리</h3><button class="moreBtn" type="button" data-list-key="monthCivil">+</button></div>
+        <div class="statusHeader"><h3>민원처리 합</h3><button class="moreBtn" type="button" data-list-key="monthCivil">+</button></div>
         <div class="tableWrap compactMatrix"><table id="monthCivilTable"></table></div>
       </div>
 
 
-      <div class="statusBlock clickableStatus" data-list-key="monthRealtime">
-        <div class="statusHeader"><h3>개인실적</h3><button class="moreBtn" type="button" data-list-key="monthRealtime">+</button></div>
-        <div class="tableWrap compactMatrix"><table id="monthRealtimeTable"></table></div>
+
+      <div class="statusBlock clickableStatus" data-list-key="monthDaily">
+        <div class="statusHeader"><h3>일자별 현황</h3><button class="moreBtn" type="button" data-list-key="monthDaily">+</button></div>
+        <div class="tableWrap compactMatrix"><table id="monthDailyTable"></table></div>
       </div>
 
       <div class="detailBlock">
@@ -322,8 +332,8 @@
       <button type="button" class="dialItem" data-type="realtime">실시간<br />실적</button>
       <button type="button" class="dialItem" data-type="civil">민원<br />처리</button>
       <button type="button" class="dialItem" data-type="police">경찰관제<br />요청</button>
-      <button type="button" class="dialItem" data-type="video">영상열람<br />반출</button>
       <button type="button" class="dialItem" data-type="info">정보<br />공개</button>
+      <button type="button" class="dialItem" data-type="video">영상열람<br />반출</button>
     </div>
 
     <button id="quickAddBtn" class="quickAddBtn" type="button">
@@ -389,7 +399,7 @@
           <input id="rtEndTime" type="time" />
 
           <label for="rtManageNo">관리번호</label>
-          <input id="rtManageNo" type="text" />
+          <input id="rtManageNo" type="text" inputmode="latin" autocapitalize="characters" autocomplete="off" placeholder="예: S001" />
 
           <label for="rtLocation">위치</label>
           <input id="rtLocation" type="text" />
@@ -407,7 +417,7 @@
           <label for="rtContent">내용</label>
           <textarea id="rtContent" rows="4"></textarea>
 
-          <label for="rtNote">비고</label>
+          <label for="rtNote">조치사항</label>
           <input id="rtNote" type="text" />
 
           <label class="checkRow">
@@ -458,7 +468,7 @@
 
           <div id="civilManageGroup">
             <label for="civilManageNo">관리번호</label>
-            <input id="civilManageNo" type="text" placeholder="카메라번호" />
+            <input id="civilManageNo" type="text" inputmode="latin" autocapitalize="characters" autocomplete="off" placeholder="예: S001" />
           </div>
 
           <div id="civilLocationGroup">
@@ -503,23 +513,31 @@
           </select>
 
           <label for="policeAgency">요청기관</label>
-          <select id="policeAgency">
-            <option>119</option>
+          <select id="policeAgency" class="compactSelect">
+            <option>직접입력</option>
+            <option>부평상황실</option>
+            <option>삼산상황실</option>
+            <option>역전지구대(부평)</option>
+            <option>동암지구대(부평)</option>
+            <option>철마지구대(부평)</option>
+            <option>부평2파출소(부평)</option>
+            <option>청천지구대(부평)</option>
+            <option>갈산지구대(삼산)</option>
+            <option>부흥지구대(삼산)</option>
+            <option>중앙지구대(삼산)</option>
+            <option>부개파출소(삼산)</option>
+            <option>부개2파출소(삼산)</option>
             <option>112</option>
-            <option>부평경찰서 / 역전지구대</option>
-            <option>부평경찰서 / 동암지구대</option>
-            <option>부평경찰서 / 철마지구대</option>
-            <option>부평경찰서 / 부평2파출소</option>
-            <option>부평경찰서 / 청천지구대</option>
-            <option>삼산경찰서 / 갈산지구대</option>
-            <option>삼산경찰서 / 부흥지구대</option>
-            <option>삼산경찰서 / 중앙지구대</option>
-            <option>삼산경찰서 / 부개파출소</option>
-            <option>삼산경찰서 / 부개2파출소</option>
+            <option>119</option>
           </select>
 
+          <div id="policeAgencyDirectGroup" class="hidden">
+            <label for="policeAgencyDirect">요청기관 직접입력</label>
+            <input id="policeAgencyDirect" type="text" />
+          </div>
+
           <label for="policeManageNo">관리번호</label>
-          <input id="policeManageNo" type="text" />
+          <input id="policeManageNo" type="text" inputmode="latin" autocapitalize="characters" autocomplete="off" placeholder="예: S001" />
 
           <label for="policeLocation">주소 / 위치</label>
           <input id="policeLocation" type="text" />
@@ -653,7 +671,7 @@
           <input id="infoReceiptNo" type="text" />
 
           <label for="infoManageNo">관리번호</label>
-          <input id="infoManageNo" type="text" />
+          <input id="infoManageNo" type="text" inputmode="latin" autocapitalize="characters" autocomplete="off" placeholder="예: S001" />
 
           <label for="infoClaimantName">청구인이름</label>
           <input id="infoClaimantName" type="text" />

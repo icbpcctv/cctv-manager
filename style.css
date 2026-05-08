@@ -2732,3 +2732,278 @@ textarea {
     grid-template-columns: 1fr 1fr !important;
   }
 }
+
+
+/* =====================
+   v0.6.7 minimal feedback patch
+===================== */
+
+.appHeader {
+  align-items: center;
+}
+
+.appTitleRow {
+  align-items: center;
+}
+
+.appLogo {
+  width: 68px !important;
+}
+
+.headerLeft h1 {
+  line-height: 1.05;
+}
+
+.headerSub {
+  margin-left: 76px;
+  margin-top: 4px;
+}
+
+#civilSummaryTable th,
+#monthCivilTable th {
+  white-space: normal !important;
+  line-height: 1.08 !important;
+}
+
+#videoMonthHint {
+  white-space: nowrap;
+}
+
+.detailTable th,
+.detailTable td,
+#policeTodayTable th,
+#policeTodayTable td,
+#civilTodayTable th,
+#civilTodayTable td,
+#monthTeamSpecialTable th,
+#monthTeamSpecialTable td {
+  font-size: 11.5px !important;
+  line-height: 1.25 !important;
+}
+
+.compactMonthControl {
+  gap: 6px !important;
+  padding: 8px !important;
+}
+
+.compactMonthControl button {
+  width: 32px !important;
+  height: 32px !important;
+  min-width: 32px !important;
+}
+
+.periodPickerBox {
+  min-width: 0;
+}
+
+.periodPickerBox select,
+.periodPickerBox input {
+  min-width: 0;
+  height: 34px !important;
+  padding: 7px 8px !important;
+  font-size: 12.5px !important;
+}
+
+#monthPage .actionRow button {
+  min-height: 36px !important;
+  padding: 9px 10px !important;
+  font-size: 12.5px !important;
+}
+
+.compactSelect {
+  font-size: 12.5px !important;
+  line-height: 1.2 !important;
+  padding-top: 9px !important;
+  padding-bottom: 9px !important;
+}
+
+.memberInputGrid {
+  grid-template-columns: repeat(4, 1fr) !important;
+  gap: 6px !important;
+}
+
+.memberInputGrid label {
+  font-size: 11px !important;
+}
+
+.memberInputGrid input {
+  padding: 9px 6px !important;
+  font-size: 12px !important;
+}
+
+.teamPreview {
+  grid-template-columns: repeat(2, 1fr) !important;
+  gap: 7px !important;
+}
+
+.teamPreviewLine {
+  display: block !important;
+  padding: 8px !important;
+}
+
+.teamPreviewLine span {
+  display: block !important;
+  margin-bottom: 4px !important;
+  font-size: 11.5px !important;
+}
+
+.teamPreviewLine strong {
+  display: grid !important;
+  grid-template-columns: 1fr 1fr;
+  gap: 2px 5px;
+  font-size: 11.5px !important;
+  line-height: 1.3 !important;
+  word-break: keep-all;
+}
+
+@media (max-width: 390px) {
+  .appLogo {
+    width: 60px !important;
+  }
+
+  .headerSub {
+    margin-left: 68px;
+  }
+
+  .memberInputGrid {
+    grid-template-columns: repeat(4, 1fr) !important;
+  }
+}
+
+
+/* =====================
+   v0.6.8 focused fixes
+===================== */
+
+/* 상단 최종 배치: 좌 제목/날짜, 중앙 로고, 우 조/이름 */
+.appHeader {
+  display: grid !important;
+  grid-template-columns: 1fr auto 1fr !important;
+  align-items: center !important;
+  gap: 8px !important;
+}
+
+.headerLeft {
+  min-width: 0 !important;
+}
+
+.headerLeft h1 {
+  margin: 0 !important;
+  font-size: 20px !important;
+  line-height: 1.05 !important;
+  font-weight: 850 !important;
+  letter-spacing: -0.5px !important;
+  white-space: nowrap !important;
+}
+
+.headerSub {
+  margin: 5px 0 0 !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  font-size: 12px !important;
+  white-space: nowrap !important;
+}
+
+.headerCenter {
+  display: grid;
+  place-items: center;
+}
+
+.headerCenter .appLogo {
+  width: 72px !important;
+  height: auto !important;
+  object-fit: contain !important;
+}
+
+.headerRight {
+  justify-self: end !important;
+  display: grid !important;
+  justify-items: end !important;
+  gap: 5px !important;
+  text-align: right !important;
+}
+
+/* 영상열람반출 월누계 한 줄 */
+#videoMonthHint,
+#videoMonthHint strong {
+  white-space: nowrap !important;
+}
+
+/* 월검색 좌우 화살표 세로 가운데 정렬 */
+.monthControl button,
+.compactMonthControl button,
+#prevPeriodBtn,
+#nextPeriodBtn {
+  display: grid !important;
+  place-items: center !important;
+  line-height: 1 !important;
+  padding: 0 !important;
+  vertical-align: middle !important;
+}
+
+/* 저장된 조 현황: 1조~4조 한 줄씩, 이름 네 명도 한 줄 */
+.teamPreview {
+  display: grid !important;
+  grid-template-columns: 1fr !important;
+  gap: 6px !important;
+}
+
+.teamPreviewLine {
+  display: grid !important;
+  grid-template-columns: 34px 1fr !important;
+  align-items: center !important;
+  gap: 7px !important;
+  padding: 7px 8px !important;
+}
+
+.teamPreviewLine span {
+  margin: 0 !important;
+  font-size: 11.5px !important;
+  font-weight: 850 !important;
+  color: var(--accent-blue) !important;
+}
+
+.teamPreviewLine strong {
+  display: grid !important;
+  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  gap: 4px !important;
+  align-items: center !important;
+  color: var(--text-soft) !important;
+  font-size: 11.5px !important;
+  font-weight: 500 !important;
+  line-height: 1.2 !important;
+}
+
+.teamPreviewLine strong em {
+  min-width: 0;
+  font-style: normal;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: center;
+}
+
+@media (max-width: 390px) {
+  .headerLeft h1 {
+    font-size: 18px !important;
+  }
+
+  .headerSub {
+    font-size: 11.5px !important;
+  }
+
+  .headerCenter .appLogo {
+    width: 62px !important;
+  }
+
+  .teamPreviewLine {
+    grid-template-columns: 30px 1fr !important;
+    gap: 5px !important;
+  }
+
+  .teamPreviewLine strong {
+    gap: 3px !important;
+    font-size: 10.8px !important;
+  }
+}
