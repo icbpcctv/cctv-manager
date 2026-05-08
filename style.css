@@ -3180,3 +3180,32 @@ textarea {
   line-height: 1.25 !important;
   font-weight: 400 !important;
 }
+
+
+/* =====================
+   v0.7.2 month detail font-only fix
+===================== */
+
+/* 월현황 > 조특이사항: 특정 칸만 커지는 문제 방지. 표 구조는 건드리지 않고 폰트만 통일 */
+#monthTeamSpecialTable,
+#monthTeamSpecialTable th,
+#monthTeamSpecialTable td,
+#monthTeamSpecialTable td * {
+  font-size: 11.5px !important;
+  line-height: 1.25 !important;
+  font-weight: 400 !important;
+}
+
+#monthTeamSpecialTable th {
+  font-weight: 700 !important;
+}
+
+/* 월현황 > 사후결재/파기공문: 기록없음 문구만 다른 표와 같은 크기로 */
+#approvalMonthTable .emptyCell,
+#destroyMonthTable .emptyCell,
+#approvalMonthTable td.emptyCell,
+#destroyMonthTable td.emptyCell {
+  font-size: 11.5px !important;
+  line-height: 1.25 !important;
+  font-weight: 400 !important;
+}
