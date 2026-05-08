@@ -1,4 +1,4 @@
-const APP_VERSION = "0.6.4";
+const APP_VERSION = "0.6.3";
 const KAKAO_EXTERNAL_MAP_URL = "https://map.kakao.com/";
 const DEFAULT_MAP_CENTER = { lat: 37.5070, lng: 126.7218 };
 const DEFAULT_MAP_LABEL = "부평구청";
@@ -581,8 +581,7 @@ function bindUppercaseManageInputs() {
     input.addEventListener("input", () => {
       const start = input.selectionStart;
       const end = input.selectionEnd;
-      input.value = input.value.replace(/[^a-zA-Z0-9]/g, "").toUpperCase();
-
+      input.value = input.value.toUpperCase();
       try {
         input.setSelectionRange(start, end);
       } catch (error) {}
@@ -1224,9 +1223,9 @@ function updateCivilFields() {
   show("civilProxyGroup", type === "전화민원" && owner === "대리");
   show("civilComplainantGroup", type === "전화민원");
   show("civilManageGroup", true);
-  show("civilLocationGroup", type === "비상벨대응" || type === "비상벨계도" || type === "비상벨기타");
+  show("civilLocationGroup", type === "비상벨대응");
   show("civilContentGroup", true);
-  show("civilActionGroup", type === "비상벨대응" || type === "비상벨기타" || type === "전화민원");
+  show("civilActionGroup", type === "비상벨대응" || type === "전화민원");
 }
 
 function setPoliceAgencyValue(value) {
