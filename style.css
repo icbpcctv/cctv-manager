@@ -3381,3 +3381,204 @@ textarea {
     padding: 5px 2px !important;
   }
 }
+
+
+/* =====================
+   v0.7.6 month report/search step
+===================== */
+
+.reportPanel,
+.monthSearchPanel {
+  margin-bottom: 12px;
+}
+
+.panelHelp {
+  margin: 0 0 10px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.reportControlGrid {
+  display: grid;
+  grid-template-columns: 118px 1fr;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.reportControlGrid label {
+  color: var(--text-soft);
+  font-size: 12px;
+  font-weight: 750;
+}
+
+.reportControlGrid input,
+.monthSearchGrid input,
+.monthSearchGrid select {
+  min-width: 0;
+  padding: 10px 11px;
+  border: 1px solid rgba(220, 226, 234, 0.9);
+  border-radius: 13px;
+  background: var(--surface);
+}
+
+.monthSearchGrid {
+  display: grid;
+  grid-template-columns: 92px 1fr 66px;
+  gap: 7px;
+  align-items: center;
+}
+
+.monthSearchGrid button,
+.reportButtons button,
+.reportActionRow button {
+  border-radius: 13px;
+  background: var(--accent-soft);
+  color: var(--accent-blue);
+  font-weight: 800;
+}
+
+.monthSearchResult {
+  margin-top: 10px;
+  display: grid;
+  gap: 7px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.reportSheet {
+  max-height: 94vh;
+  background: #f6f7f9;
+}
+
+.reportActionRow {
+  display: grid;
+  margin-bottom: 10px;
+}
+
+.reportActionRow button {
+  min-height: 38px;
+}
+
+.reportPreviewBody {
+  display: grid;
+  gap: 14px;
+}
+
+.reportDoc {
+  width: 100%;
+  padding: 16px;
+  border-radius: 18px;
+  background: #fff;
+  color: #111;
+  box-sizing: border-box;
+  overflow-x: auto;
+}
+
+.reportDoc h1 {
+  margin: 0 0 14px;
+  font-size: 18px;
+  line-height: 1.35;
+  text-align: center;
+}
+
+.reportDoc h2 {
+  margin: 14px 0 8px;
+  font-size: 14px;
+  line-height: 1.3;
+}
+
+.reportWorker {
+  margin: 0 0 10px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.reportTable {
+  width: 100%;
+  min-width: 0;
+  border-collapse: collapse;
+  font-size: 10.8px;
+  background: #fff;
+}
+
+.reportTable th,
+.reportTable td {
+  border: 1px solid #222;
+  padding: 5px 4px;
+  color: #111;
+  text-align: center;
+  vertical-align: middle;
+  font-weight: 400;
+}
+
+.reportTable th {
+  font-weight: 700;
+  background: #f4f4f4;
+}
+
+.reportLogTable td:nth-child(6),
+.reportLogTable td:nth-child(7),
+.reportSpecialTable td {
+  text-align: left;
+  line-height: 1.45;
+}
+
+.reportSpecialTable p {
+  margin: 0 0 7px;
+}
+
+body.printingReport .appHeader,
+body.printingReport .bottomTabs,
+body.printingReport .quickDialWrap,
+body.printingReport .quickBackdrop,
+body.printingReport .reportActionRow,
+body.printingReport #closeReportModal {
+  display: none !important;
+}
+
+@media print {
+  body.printingReport * {
+    visibility: hidden;
+  }
+
+  body.printingReport #reportPreviewBody,
+  body.printingReport #reportPreviewBody * {
+    visibility: visible;
+  }
+
+  body.printingReport #reportPreviewBody {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+  }
+
+  body.printingReport .reportDoc {
+    box-shadow: none;
+    border-radius: 0;
+    padding: 0;
+  }
+}
+
+@media (max-width: 390px) {
+  .monthSearchGrid {
+    grid-template-columns: 82px 1fr 58px;
+    gap: 5px;
+  }
+
+  .monthSearchGrid input,
+  .monthSearchGrid select {
+    padding: 9px 8px;
+    font-size: 12.5px;
+  }
+
+  .monthSearchGrid button {
+    font-size: 12.5px;
+  }
+
+  .reportControlGrid {
+    grid-template-columns: 1fr;
+  }
+}

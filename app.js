@@ -1,4 +1,4 @@
-const APP_VERSION = "0.7.5";
+const APP_VERSION = "0.7.6";
 const KAKAO_EXTERNAL_MAP_URL = "https://map.kakao.com/";
 const DEFAULT_MAP_CENTER = { lat: 37.5070, lng: 126.7218 };
 const DEFAULT_MAP_LABEL = "부평구청";
@@ -69,6 +69,8 @@ function init() {
   bindDynamicForms();
   bindUppercaseManageInputs();
   bindMonth();
+  bindReports();
+  bindMonthSearch();
   bindBackup();
   bindSettings();
   applyTheme();
@@ -609,6 +611,8 @@ function bindUppercaseManageInputs() {
 }
 
 function bindMonth() {
+  if ($("dailyReportDate")) $("dailyReportDate").value = todayString();
+
   $("prevPeriodBtn").addEventListener("click", () => {
     const mode = $("periodMode").value;
     if (mode === "month") currentPeriodDate.setMonth(currentPeriodDate.getMonth() - 1);
@@ -646,6 +650,44 @@ function bindMonth() {
 
   $("exportExcelBtn").addEventListener("click", exportCurrentPeriodCsv);
   $("exportPdfBtn").addEventListener("click", () => window.print());
+}
+
+
+function bindReports() {
+  const dailyBtn = $("previewDailyReportBtn");
+  const monthlyBtn = $("previewMonthlyReportBtn");
+  const closeBtn = $("closeReportModal");
+  const printBtn = $("printReportBtn");
+
+  if (dailyBtn) {
+    dailyBtn.addEventListener("click", () => {
+      const date = $("dailyReportDate").value || todayString();
+      openReportPreview("daily", date);
+    });
+  }
+
+  if (monthlyBtn) {
+    monthlyBtn.addEventListener("click", () => {
+      openReportPreview("monthly", getPeriodKey());
+    });
+  }
+
+  if (closeBtn) closeBtn.addEventListener("click", closeReportPreview);
+  if (printBtn) printBtn.addEventListener("click", printReportPreview);
+}
+
+function bindMonthSearch() {
+  const input = $("monthSearchInput");
+  const btn = $("monthSearchBtn");
+  const scope = $("monthSearchScope");
+
+  if (!input || !btn || !scope) return;
+
+  btn.addEventListener("click", renderMonthSearch);
+  input.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") renderMonthSearch();
+  });
+  scope.addEventListener("change", renderMonthSearch);
 }
 
 function bindBackup() {
@@ -920,6 +962,7 @@ function renderMonthPage() {
   renderMonthlyRealtime(key);
   renderMonthlySpecials(key);
   renderMonthlyDocs(key);
+  if ($("monthSearchInput") && $("monthSearchInput").value.trim()) renderMonthSearch();
 }
 
 function getPeriodKey() {
@@ -1674,6 +1717,285 @@ function renderBackupInfo() {
   }
   $("backupText").textContent = `최근 백업: ${formatDateTime(lastBackup.exportedAt)} / ${lastBackup.version}`;
 }
+
+
+function getUserName() {
+  const members = settings.teams?.[settings.activeTeam] || settings.members || [];
+  return settings.currentUser || members[0] || "사용자";
+}
+
+function formatKoreanDate(dateStringValue) {
+  if (!dateStringValue) return "-";
+  const d = parseDateOnly(dateStringValue);
+  const days = ["일", "월", "화", "수", "목", "금", "토"];
+  return `${d.getFullYear()}. ${d.getMonth() + 1}. ${d.getDate()}. ${days[d.getDay()]}`;
+}
+
+function formatReportDateTitle(dateStringValue) {
+  if (!dateStringValue) return "-";
+  const d = parseDateOnly(dateStringValue);
+  const days = ["일", "월", "화", "수", "목", "금", "토"];
+  return `${d.getFullYear()}. ${d.getMonth() + 1}. ${d.getDate()}. ${days[d.getDay()]}. ${getShift(d)}`;
+}
+
+function getMonthlyKeyFromDate(dateStringValue) {
+  return String(dateStringValue || "").slice(0, 7);
+}
+
+function countBy(list, predicate) {
+  return list.filter(predicate).length;
+}
+
+function dailyCountSet(date) {
+  const ym = getMonthlyKeyFromDate(date);
+  const dayRealtime = realtimeRecords.filter((r) => r.date === date);
+  const monthRealtime = realtimeRecords.filter((r) => r.date.startsWith(ym));
+  const dayCivil = civilRecords.filter((r) => r.date === date);
+  const monthCivil = civilRecords.filter((r) => r.date.startsWith(ym));
+  const dayPolice = policeRecords.filter((r) => r.date === date);
+  const monthPolice = policeRecords.filter((r) => r.date.startsWith(ym));
+  const dayVideo = videoRecords.filter((r) => r.date === date);
+  const monthVideo = videoRecords.filter((r) => r.date.startsWith(ym));
+  const dayInfo = infoRecords.filter((r) => r.date === date);
+  const monthInfo = infoRecords.filter((r) => r.date.startsWith(ym));
+
+  const realtime = realtimeCategories.map((category) => ({
+    category,
+    today: countBy(dayRealtime, (r) => r.category === category),
+    month: countBy(monthRealtime, (r) => r.category === category),
+  }));
+
+  const civil = [
+    { label: "비상벨 대응", today: countBy(dayCivil, (r) => r.type === "비상벨대응"), month: countBy(monthCivil, (r) => r.type === "비상벨대응") },
+    { label: "비상벨 기타", today: countBy(dayCivil, (r) => r.type === "비상벨기타"), month: countBy(monthCivil, (r) => r.type === "비상벨기타") },
+    { label: "비상벨 계도", today: countBy(dayCivil, (r) => r.type === "비상벨계도"), month: countBy(monthCivil, (r) => r.type === "비상벨계도") },
+    { label: "전화민원", today: countBy(dayCivil, (r) => r.type === "전화민원"), month: countBy(monthCivil, (r) => r.type === "전화민원") },
+    { label: "정보공개", today: dayInfo.length, month: monthInfo.length },
+  ];
+
+  return {
+    realtime,
+    civil,
+    police: { today: dayPolice.length, month: monthPolice.length },
+    video: { today: dayVideo.length, month: monthVideo.length },
+    totals: {
+      today: dayRealtime.length + dayCivil.length + dayPolice.length + dayVideo.length + dayInfo.length,
+      month: monthRealtime.length + monthCivil.length + monthPolice.length + monthVideo.length + monthInfo.length,
+    },
+  };
+}
+
+function openReportPreview(type, value) {
+  const html = type === "daily" ? buildDailyReport(value) : buildMonthlyReport(value);
+  $("reportModalTitle").textContent = type === "daily" ? "일일근무일지 미리보기" : "월현황보고서 미리보기";
+  $("reportPreviewBody").innerHTML = html;
+  $("reportModal").classList.add("show");
+}
+
+function closeReportPreview() {
+  $("reportModal").classList.remove("show");
+}
+
+function printReportPreview() {
+  document.body.classList.add("printingReport");
+  window.print();
+  setTimeout(() => document.body.classList.remove("printingReport"), 500);
+}
+
+function buildDailyReport(date) {
+  const counts = dailyCountSet(date);
+  const realtimeRows = realtimeRecords
+    .filter((r) => r.date === date)
+    .sort((a, b) => String(a.startTime || "").localeCompare(String(b.startTime || "")))
+    .slice(0, 8);
+
+  const specialPolice = policeRecords.filter((r) => r.date === date);
+  const phoneCivil = civilRecords.filter((r) => r.date === date && r.type === "전화민원");
+  const specialCivil = civilRecords.filter((r) => r.date === date && r.type !== "전화민원");
+  const info = infoRecords.filter((r) => r.date === date);
+
+  return `
+    <article class="reportDoc dailyReport">
+      <h1>CCTV 관제 근무일지(${escapeHtml(formatReportDateTitle(date))})</h1>
+      <p class="reportWorker">■ 근무자 : ${escapeHtml(getUserName())} (${escapeHtml(settings.activeTeam || "1조")})</p>
+
+      <h2>■ CCTV 관제 대응 실적</h2>
+      <table class="reportTable">
+        <thead>
+          <tr>
+            <th rowspan="2">구분</th>
+            ${counts.realtime.map((item) => `<th>${escapeHtml(item.category)}</th>`).join("")}
+            ${counts.civil.map((item) => `<th>${escapeHtml(item.label)}</th>`).join("")}
+            <th>경찰관제요청</th>
+            <th>영상열람반출</th>
+            <th>합계</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <th>금일건수</th>
+            ${counts.realtime.map((item) => `<td>${item.today}</td>`).join("")}
+            ${counts.civil.map((item) => `<td>${item.today}</td>`).join("")}
+            <td>${counts.police.today}</td>
+            <td>${counts.video.today}</td>
+            <td>${counts.totals.today}</td>
+          </tr>
+          <tr>
+            <th>월 누계</th>
+            ${counts.realtime.map((item) => `<td>${item.month}</td>`).join("")}
+            ${counts.civil.map((item) => `<td>${item.month}</td>`).join("")}
+            <td>${counts.police.month}</td>
+            <td>${counts.video.month}</td>
+            <td>${counts.totals.month}</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h2>■ CCTV 관제일지</h2>
+      <table class="reportTable reportLogTable">
+        <thead><tr><th>번호</th><th>시간</th><th>CCTV 관리번호</th><th>위치</th><th>구분</th><th>관제내용</th><th>결과</th></tr></thead>
+        <tbody>
+          ${[0, 1, 2, 3].map((idx) => {
+            const r = realtimeRows[idx];
+            return `<tr><td>${idx + 1}</td><td>${escapeHtml(r ? `${r.startTime || ""}~${r.endTime || ""}` : "")}</td><td>${escapeHtml(r?.manageNo || "")}</td><td>${escapeHtml(r?.location || "")}</td><td>${escapeHtml(r?.category || "")}</td><td>${escapeHtml(r?.content || "")}</td><td>${escapeHtml(r?.note || "")}</td></tr>`;
+          }).join("")}
+        </tbody>
+      </table>
+
+      <h2>■ CCTV 관제 특이사항(상세내용)</h2>
+      <table class="reportTable reportSpecialTable">
+        <tbody>
+          <tr><th>경찰서 상황실, 지구대 요청에 따른 조치사항</th><td>${reportLines(specialPolice.map(reportPoliceLine))}</td></tr>
+          <tr><th>전화 민원<br>(정보공개 청구 등)</th><td>${reportLines([...phoneCivil.map(reportCivilLine), ...info.map(reportInfoLine)])}</td></tr>
+          <tr><th>고장 신고 접수</th><td></td></tr>
+          <tr><th>기타 특이사항</th><td>${reportLines(specialCivil.map(reportCivilLine))}</td></tr>
+        </tbody>
+      </table>
+    </article>
+  `;
+}
+
+function buildMonthlyReport(key) {
+  const title = key.length === 4 ? `${key}년` : `${Number(key.slice(0, 4))}년 ${Number(key.slice(5, 7))}월`;
+  const rt = realtimeCategories.map((category) => countBy(realtimeRecords, (r) => r.date.startsWith(key) && r.category === category));
+  const civil = {
+    bellResponse: countBy(civilRecords, (r) => r.date.startsWith(key) && r.type === "비상벨대응"),
+    bellGuide: countBy(civilRecords, (r) => r.date.startsWith(key) && r.type === "비상벨계도"),
+    bellEtc: countBy(civilRecords, (r) => r.date.startsWith(key) && r.type === "비상벨기타"),
+    phone: countBy(civilRecords, (r) => r.date.startsWith(key) && r.type === "전화민원"),
+    info: countBy(infoRecords, (r) => r.date.startsWith(key)),
+  };
+  const police = policeCategories.map((category) => countBy(policeRecords, (r) => r.date.startsWith(key) && r.category === category));
+  const video = videoCategories.map((category) => countBy(videoRecords, (r) => r.date.startsWith(key) && r.category === category));
+  const videoView = countBy(videoRecords, (r) => r.date.startsWith(key) && r.process === "열람");
+  const videoCopy = countBy(videoRecords, (r) => r.date.startsWith(key) && r.process === "복제");
+  const mainSpecials = teamSpecials.filter((r) => r.date.startsWith(key));
+  const bellSpecials = civilRecords.filter((r) => r.date.startsWith(key) && ["비상벨대응", "비상벨계도", "비상벨기타"].includes(r.type));
+
+  return `
+    <article class="reportDoc monthlyReport">
+      <h1>${escapeHtml(title)} CCTV통합관제센터<br>모니터링 및 영상제공 현황 보고</h1>
+
+      <h2>Ⅰ 관제센터 근무현황</h2>
+      <table class="reportTable"><tbody><tr><th>계</th><th>관제요원</th><th>유지보수</th><th>공무원</th><th>사회복무요원</th></tr><tr><td>18명</td><td>16명</td><td>1명</td><td>1명</td><td>-</td></tr></tbody></table>
+
+      <h2>Ⅱ CCTV 관제대응 실적</h2>
+      <table class="reportTable">
+        <thead><tr><th>구분</th>${realtimeCategories.map((c) => `<th>${escapeHtml(c)}</th>`).join("")}<th>비상벨 대응</th><th>비상벨 계도</th><th>비상벨 기타</th><th>전화민원</th><th>정보공개</th><th>경찰관제요청</th><th>영상열람반출</th></tr></thead>
+        <tbody><tr><th>계</th>${rt.map((v) => `<td>${v}</td>`).join("")}<td>${civil.bellResponse}</td><td>${civil.bellGuide}</td><td>${civil.bellEtc}</td><td>${civil.phone}</td><td>${civil.info}</td><td>${sum(police)}</td><td>${videoView + videoCopy}</td></tr></tbody>
+      </table>
+
+      <h2>□ CCTV 관제요청 현황 [경찰서 → 관제센터]</h2>
+      <table class="reportTable"><thead><tr><th>합계</th>${policeCategories.map((c) => `<th>${escapeHtml(c)}</th>`).join("")}</tr></thead><tbody><tr><td>${sum(police)}</td>${police.map((v) => `<td>${v}</td>`).join("")}</tr></tbody></table>
+
+      <h2>□ CCTV 영상자료 열람·제공</h2>
+      <table class="reportTable"><tbody><tr><th>구분</th><th>계</th><th>비고</th></tr><tr><th>열람</th><td>${videoView}</td><td></td></tr><tr><th>제공</th><td>${videoCopy}</td><td>복제</td></tr><tr><th>합계</th><td>${videoView + videoCopy}</td><td></td></tr></tbody></table>
+
+      <h2>□ 열람·제공 CCTV 영상자료 활용 현황</h2>
+      <table class="reportTable"><thead><tr><th>합계</th>${videoCategories.map((c) => `<th>${escapeHtml(c)}</th>`).join("")}</tr></thead><tbody><tr><td>${sum(video)}</td>${video.map((v) => `<td>${v}</td>`).join("")}</tr></tbody></table>
+
+      <h2>Ⅲ 주요 특이사항</h2>
+      <table class="reportTable reportSpecialTable"><tbody>${mainSpecials.length ? mainSpecials.map((item) => `<tr><th>${escapeHtml(settings.activeTeam || "")}<br>${escapeHtml(formatKoreanDate(item.date))}<br>${escapeHtml(getShift(parseDateOnly(item.date)))}</th><td>${reportPoliceLine(item)}</td></tr>`).join("") : `<tr><td>기록 없음</td></tr>`}</tbody></table>
+
+      <h2>Ⅳ 비상벨, 안심in</h2>
+      <table class="reportTable reportSpecialTable"><tbody>${bellSpecials.length ? bellSpecials.map((item) => `<tr><th>${escapeHtml(settings.activeTeam || "")}<br>${escapeHtml(formatKoreanDate(item.date))}<br>${escapeHtml(getShift(parseDateOnly(item.date)))}</th><td>${reportCivilLine(item)}</td></tr>`).join("") : `<tr><td>기록 없음</td></tr>`}</tbody></table>
+    </article>
+  `;
+}
+
+function reportLines(lines) {
+  return lines.length ? lines.map((line) => `<p>${line}</p>`).join("") : "";
+}
+
+function reportPoliceLine(item) {
+  return `□ [${escapeHtml(item.category || "경찰관제요청")}]<br>- 요청기관: ${escapeHtml(item.agency || "")}<br>- 장 소: ${escapeHtml(item.location || "")} (${escapeHtml(item.manageNo || "")})<br>- 사건개요: ${escapeHtml(item.content || "")}<br>- 처리결과: ${escapeHtml(item.action || "")}`;
+}
+
+function reportCivilLine(item) {
+  return `□ [${escapeHtml(item.type || "민원처리")}]<br>- 장 소: ${escapeHtml(item.location || "")} (${escapeHtml(item.manageNo || "")})<br>- 내용: ${escapeHtml(item.content || "")}<br>- 처리결과: ${escapeHtml(item.action || "")}`;
+}
+
+function reportInfoLine(item) {
+  return `□ [정보공개]<br>- 접수번호: ${escapeHtml(item.receiptNo || "")}<br>- 관리번호: ${escapeHtml(item.manageNo || "")}<br>- 청구인: ${escapeHtml(item.claimantName || "")}<br>- 내용: ${escapeHtml(item.content || "")}`;
+}
+
+function renderMonthSearch() {
+  const result = $("monthSearchResult");
+  if (!result) return;
+
+  const query = $("monthSearchInput").value.trim().toLowerCase();
+  const scope = $("monthSearchScope").value;
+  const key = getPeriodKey();
+
+  if (!query) {
+    result.innerHTML = "검색어를 입력하면 해당 월 자료를 찾아 표시합니다.";
+    return;
+  }
+
+  const refs = collectPeriodItems(key)
+    .map(({ group, item }) => ({ group, item, type: groupToType(group), text: getSearchText(item, scope).toLowerCase() }))
+    .filter(({ text }) => text.includes(query))
+    .map(({ type, item, group }) => ref(type, item, group))
+    .filter(({ type }) => type);
+
+  result.innerHTML = refs.length ? renderRecordList(refs) : '<div class="emptyList">검색 결과 없음</div>';
+
+  result.querySelectorAll("[data-edit-type]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const type = btn.dataset.editType;
+      const id = btn.dataset.editId;
+      const record = findRecord(type, id);
+      if (record) openInputModal(type, record);
+    });
+  });
+}
+
+function groupToType(group) {
+  if (group === "실시간 개인실적" || group === "개인특이사항") return "realtime";
+  if (group === "민원처리") return "civil";
+  if (group === "경찰관제요청" || group === "조특이사항") return "police";
+  if (group === "영상열람반출") return "video";
+  if (group === "정보공개") return "info";
+  return "";
+}
+
+function getSearchText(item, scope) {
+  const approvalDoc = item.approval ? [item.approval.docNo, item.approval.keyword, item.approval.content].join(" ") : "";
+  const destroyDoc = item.destroy ? [item.destroy.docNo, item.destroy.sendDocNo, item.destroy.content].join(" ") : "";
+
+  if (scope === "manageNo") return item.manageNo || "";
+  if (scope === "location") return item.location || "";
+  if (scope === "agency") return item.agency || item.approval?.org || item.destroy?.org || "";
+  if (scope === "content") return [item.content, item.action, item.note, approvalDoc, destroyDoc].join(" ");
+  if (scope === "docNo") return [item.receiptNo, item.approval?.docNo, item.destroy?.docNo, item.destroy?.sendDocNo].join(" ");
+
+  return [
+    item.date, item.time, item.startTime, item.endTime, item.manageNo, item.location, item.category, item.type, item.process,
+    item.agency, item.complainantInfo, item.claimantName, item.claimantPhone, item.receiptNo, item.content, item.action, item.note,
+    approvalDoc, destroyDoc,
+  ].join(" ");
+}
+
 
 function exportCurrentPeriodCsv() {
   const key = getPeriodKey();
