@@ -1,4 +1,4 @@
-const APP_VERSION = "0.7.3";
+const APP_VERSION = "0.7.4";
 const KAKAO_EXTERNAL_MAP_URL = "https://map.kakao.com/";
 const DEFAULT_MAP_CENTER = { lat: 37.5070, lng: 126.7218 };
 const DEFAULT_MAP_LABEL = "부평구청";
@@ -139,7 +139,19 @@ function makeId() {
 }
 
 function todayString() {
-  return dateString(new Date());
+  return dateString(getWorkDate(new Date()));
+}
+
+function getWorkDate(date) {
+  const current = new Date(date);
+  const previous = new Date(current);
+  previous.setDate(current.getDate() - 1);
+
+  if (current.getHours() < 9 && getShift(previous) === "야간") {
+    return previous;
+  }
+
+  return current;
 }
 
 function dateString(date) {
@@ -192,7 +204,7 @@ function setShiftClass(shift) {
 }
 
 function formatHeaderDate() {
-  const d = new Date();
+  const d = getWorkDate(new Date());
   const days = ["일", "월", "화", "수", "목", "금", "토"];
   return `${d.getFullYear()}.${d.getMonth() + 1}.${d.getDate()}(${days[d.getDay()]})`;
 }
@@ -582,7 +594,7 @@ function bindUppercaseManageInputs() {
 
     input.addEventListener("input", () => {
       const before = input.value;
-      const next = before.replace(/[^a-zA-Z0-9]/g, "").toUpperCase();
+      const next = before.replace(/[^a-zA-Z0-9,\s]/g, "").toUpperCase();
 
       if (before !== next) {
         const cursor = input.selectionStart;
@@ -675,7 +687,8 @@ function renderAll() {
 }
 
 function renderHeader() {
-  const shift = getShift(new Date());
+  const workDate = getWorkDate(new Date());
+  const shift = getShift(workDate);
   const members = settings.teams?.[settings.activeTeam] || settings.members || [];
   const user = settings.currentUser || members[0] || "사용자 미선택";
 
@@ -861,7 +874,7 @@ function formatVideoCountInline(list) {
 function renderHomeDetails() {
   const today = todayString();
 
-  renderTable("realtimeTodayTable", ["번호", "시간", "관리번호", "위치", "구분", "내용", "비고"],
+  renderTable("realtimeTodayTable", ["번호", "시간", "관리번호", "위치", "구분", "내용", "조치사항"],
     realtimeRecords.filter((r) => r.date === today).map((r, idx) => [idx + 1, `${r.startTime || "-"}~${r.endTime || "-"}`, r.manageNo, r.location, r.category, r.content, r.note]), [0]);
 
   renderTable("policeTodayTable", ["번호", "시간", "구분", "요청기관", "관리번호", "주소/위치", "내용", "조치사항"],
@@ -869,6 +882,9 @@ function renderHomeDetails() {
 
   renderTable("civilTodayTable", ["번호", "시간", "민원종류", "민원인정보", "관리번호", "위치", "민원내용", "조치사항"],
     civilRecords.filter((r) => r.date === today).map((r, idx) => [idx + 1, r.time, civilTitle(r), r.complainantInfo, r.manageNo, r.location, r.content, r.action]), [0]);
+
+  renderTable("infoTodayTable", ["번호", "접수일", "접수번호", "관리번호", "청구인", "연락처", "청구내용", "비고"],
+    infoRecords.filter((r) => r.date === today).map((r, idx) => [idx + 1, r.date, r.receiptNo, r.manageNo, r.claimantName, r.claimantPhone, r.content, r.note]), [0]);
 
   renderApprovalHome();
   renderDestroyHome();
@@ -1018,7 +1034,8 @@ function getListPayload(key, options = {}) {
     homeRealtime: { title: "오늘 실시간 개인실적", refs: realtimeRecords.filter((r) => r.date === today).map((item) => ref("realtime", item)) },
     homePolice: { title: "오늘 경찰관제요청", refs: policeRecords.filter((r) => r.date === today).map((item) => ref("police", item)) },
     homeVideo: { title: "오늘 영상열람반출", refs: videoRecords.filter((r) => r.date === today).map((item) => ref("video", item)) },
-    homeCivil: { title: "오늘 민원", refs: [...civilRecords.filter((r) => r.date === today).map((item) => ref("civil", item)), ...infoRecords.filter((r) => r.date === today).map((item) => ref("info", item))] },
+    homeCivil: { title: "오늘 민원처리", refs: civilRecords.filter((r) => r.date === today).map((item) => ref("civil", item)) },
+    homeInfo: { title: "오늘 정보공개", refs: infoRecords.filter((r) => r.date === today).map((item) => ref("info", item)) },
     homeApproval: { title: "사후결재", refs: videoRecords.filter((r) => r.approval && !r.approval.completed).map((item) => ref("video", item, "사후결재")) },
     homeDestroy: { title: "파기공문", refs: videoRecords.filter((r) => r.destroy && !r.destroy.completed).map((item) => ref("video", item, "파기공문")) },
     monthRealtime: { title: "실시간 개인실적", refs: realtimeRecords.filter((r) => r.date.startsWith(period)).map((item) => ref("realtime", item)) },
@@ -1054,6 +1071,7 @@ function getDailyPayload(period, category = "") {
   if (category) {
     const refsByCategory = {
       "개인실적": realtimeRecords.filter((r) => r.date.startsWith(period)).map((item) => ref("realtime", item)),
+      "민원처리": civilRecords.filter((r) => r.date.startsWith(period)).map((item) => ref("civil", item)),
       "민원": civilRecords.filter((r) => r.date.startsWith(period)).map((item) => ref("civil", item)),
       "경찰관제": policeRecords.filter((r) => r.date.startsWith(period)).map((item) => ref("police", item)),
       "열람복제": videoRecords.filter((r) => r.date.startsWith(period)).map((item) => ref("video", item)),

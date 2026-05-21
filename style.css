@@ -3264,3 +3264,53 @@ textarea {
     padding-right: 4px !important;
   }
 }
+
+
+/* =====================
+   v0.7.4 test feedback fixes
+===================== */
+
+/* 일자별 현황 팝업: 날짜 칸만 길어지지 않게 균등 배치 */
+.dateSummaryCard {
+  grid-template-columns: 1.15fr repeat(5, 1fr) !important;
+  align-items: center !important;
+  gap: 5px !important;
+}
+
+.dateSummaryCard strong,
+.dateSummaryCard span {
+  min-width: 0 !important;
+  text-align: center !important;
+  white-space: nowrap !important;
+  font-size: 11.5px !important;
+}
+
+.dateSummaryCard span {
+  padding: 4px 3px !important;
+}
+
+/* 모바일 입력 중 화면 확대/이탈 방지 */
+@media (max-width: 520px) {
+  #inputModal .sheet {
+    max-height: calc(100dvh - 14px) !important;
+    padding-bottom: calc(18px + env(safe-area-inset-bottom)) !important;
+  }
+
+  #inputModal input,
+  #inputModal select,
+  #inputModal textarea {
+    font-size: 16px !important;
+  }
+
+  #inputModal textarea {
+    max-height: 150px !important;
+    overflow-y: auto !important;
+  }
+}
+
+/* 오늘세부 정보공개 표도 기존 세부표와 같은 톤 유지 */
+#infoTodayTable th,
+#infoTodayTable td {
+  font-size: 11.5px !important;
+  line-height: 1.25 !important;
+}
