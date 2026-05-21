@@ -1,4 +1,4 @@
-const APP_VERSION = "0.7.4";
+const APP_VERSION = "0.7.5";
 const KAKAO_EXTERNAL_MAP_URL = "https://map.kakao.com/";
 const DEFAULT_MAP_CENTER = { lat: 37.5070, lng: 126.7218 };
 const DEFAULT_MAP_LABEL = "부평구청";
@@ -1093,7 +1093,16 @@ function getDailyPayload(period, category = "") {
     const vi = videoRecords.filter((r) => r.date === date).length;
     const inf = infoRecords.filter((r) => r.date === date).length;
 
-    return `<button class="dateSummaryCard" type="button" data-date-detail="${escapeHtml(date)}"><strong>${escapeHtml(date)}</strong><span>개인 ${rt}</span><span>민원처리 ${cv}</span><span>경찰 ${po}</span><span>영상 ${vi}</span><span>정보 ${inf}</span></button>`;
+    return `<button class="dateSummaryCard" type="button" data-date-detail="${escapeHtml(date)}">
+      <strong>${escapeHtml(date)}</strong>
+      <div class="dateSummaryStats">
+        <span>개인 ${rt}</span>
+        <span>민원처리 ${cv}</span>
+        <span>경찰 ${po}</span>
+        <span>영상 ${vi}</span>
+        <span>정보 ${inf}</span>
+      </div>
+    </button>`;
   }).join("");
 
   return { title: "일자별 현황", html };
