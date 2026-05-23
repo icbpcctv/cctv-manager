@@ -320,12 +320,6 @@
             <option value="ios-lavender">라벤더</option>
             <option value="ios-graphite">그래파이트</option>
           </select>
-<div class="themePreviewGrid">
-            <div class="themePreview themeBlue"><span></span><strong>iOS 블루</strong></div>
-            <div class="themePreview themeSage"><span></span><strong>세이지</strong></div>
-            <div class="themePreview themeLavender"><span></span><strong>라벤더</strong></div>
-            <div class="themePreview themeGraphite"><span></span><strong>그래파이트</strong></div>
-          </div>
 
           <div class="actionList">
             <button id="saveThemeSettingBtn" type="button">테마 저장</button>
@@ -437,19 +431,47 @@
 
       <div id="modalForms">
         <form id="formRealtime" class="inputForm">
-          <div class="dateTimeRow">
+          <label for="rtDate">날짜</label>
+          <input id="rtDate" type="date" />
+
+          <div class="dateTimeRow threeTimeRow">
             <div>
-              <label for="rtDate">날짜</label>
-              <input id="rtDate" type="date" />
+              <label for="rtStartTime">신고시간</label>
+              <input id="rtStartTime" type="time" />
             </div>
             <div>
-              <label for="rtStartTime">시작시간</label>
-              <input id="rtStartTime" type="time" />
+              <label for="rtDispatchTime">출동시간</label>
+              <input id="rtDispatchTime" type="time" />
+            </div>
+            <div>
+              <label for="rtEndTime">종료시간</label>
+              <input id="rtEndTime" type="time" />
             </div>
           </div>
 
-          <label for="rtEndTime">종료시간</label>
-          <input id="rtEndTime" type="time" />
+          <label for="rtAgency">기관선택</label>
+          <select id="rtAgency" class="compactSelect">
+            <option>직접입력</option>
+            <option>부평상황실</option>
+            <option>삼산상황실</option>
+            <option>역전지구대(부평)</option>
+            <option>동암지구대(부평)</option>
+            <option>철마지구대(부평)</option>
+            <option>부평2파출소(부평)</option>
+            <option>청천지구대(부평)</option>
+            <option>갈산지구대(삼산)</option>
+            <option>부흥지구대(삼산)</option>
+            <option>중앙지구대(삼산)</option>
+            <option>부개파출소(삼산)</option>
+            <option>부개2파출소(삼산)</option>
+            <option>112</option>
+            <option>119</option>
+          </select>
+
+          <div id="rtAgencyDirectGroup" class="hidden">
+            <label for="rtAgencyDirect">기관 직접입력</label>
+            <input id="rtAgencyDirect" type="text" />
+          </div>
 
           <label for="rtManageNo">관리번호</label>
           <input id="rtManageNo" type="text" inputmode="latin" autocapitalize="characters" autocomplete="off" placeholder="예: S001, S002" />
@@ -515,8 +537,11 @@
           </div>
 
           <div id="civilComplainantGroup">
-            <label for="civilComplainantInfo">민원인정보</label>
-            <input id="civilComplainantInfo" type="text" placeholder="이름 또는 연락처" />
+            <label for="civilComplainantInfo">민원인 이름/정보</label>
+            <input id="civilComplainantInfo" type="text" placeholder="이름 또는 기타 정보" />
+
+            <label for="civilComplainantPhone">민원인 연락처</label>
+            <input id="civilComplainantPhone" type="tel" placeholder="연락처" />
           </div>
 
           <div id="civilManageGroup">
@@ -595,7 +620,13 @@
           <label for="policeLocation">주소 / 위치</label>
           <input id="policeLocation" type="text" />
 
-          <label for="policeContent">내용</label>
+          <label for="policeSpecialTitle">출력 제목</label>
+          <input id="policeSpecialTitle" type="text" placeholder="예: 상황실/검거 절도, 실종 발견" />
+
+          <label for="policeOperators">관제요원</label>
+          <input id="policeOperators" type="text" placeholder="예: 배상원, 김정화" />
+
+          <label for="policeContent">사건개요</label>
           <textarea id="policeContent" rows="4"></textarea>
 
           <label for="policeAction">조치사항</label>
@@ -719,6 +750,29 @@
         <form id="formInfo" class="inputForm">
           <label for="infoReceiptDate">접수일</label>
           <input id="infoReceiptDate" type="date" />
+
+          <label for="infoClaimDate">청구일</label>
+          <input id="infoClaimDate" type="date" />
+
+          <div class="dateTimeRow">
+            <div>
+              <label for="infoDesiredDate">열람희망일</label>
+              <input id="infoDesiredDate" type="date" />
+            </div>
+            <div>
+              <label for="infoDesiredTime">희망시간</label>
+              <input id="infoDesiredTime" type="time" />
+            </div>
+          </div>
+
+          <label for="infoResult">처리결과</label>
+          <select id="infoResult">
+            <option>공개</option>
+            <option>부분공개</option>
+            <option>비공개</option>
+            <option>부존재</option>
+            <option>종결</option>
+          </select>
 
           <label for="infoReceiptNo">접수번호</label>
           <input id="infoReceiptNo" type="text" />

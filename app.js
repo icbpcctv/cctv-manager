@@ -1,4 +1,4 @@
-const APP_VERSION = "0.7.7";
+const APP_VERSION = "0.7.8";
 const KAKAO_EXTERNAL_MAP_URL = "https://map.kakao.com/";
 const DEFAULT_MAP_CENTER = { lat: 37.5070, lng: 126.7218 };
 const DEFAULT_MAP_LABEL = "부평구청";
@@ -229,7 +229,20 @@ function bindTabs() {
       $(page).classList.add("active");
 
       closeQuickDial();
+
+      if (page === "managePage") {
+        closeManageDetails();
+      }
+
+      if (page === "monthPage" && $("dailyReportDate")) {
+        $("dailyReportDate").value = todayString();
+      }
+
       renderAll();
+
+      if (page !== "managePage") {
+        closeManageDetails();
+      }
 
       if (page === "mapPage") {
         setTimeout(initMapPage, 80);
@@ -580,7 +593,14 @@ function bindForms() {
   $("formInfo").addEventListener("submit", saveInfoRecord);
 }
 
+function closeManageDetails() {
+  document.querySelectorAll("#managePage details.settingDetails").forEach((details) => {
+    details.open = false;
+  });
+}
+
 function bindDynamicForms() {
+  $("rtAgency").addEventListener("change", updateRealtimeAgencyFields);
   $("civilType").addEventListener("change", updateCivilFields);
   $("civilPhoneOwner").addEventListener("change", updateCivilFields);
   $("policeAgency").addEventListener("change", updatePoliceAgencyFields);
@@ -916,17 +936,17 @@ function formatVideoCountInline(list) {
 function renderHomeDetails() {
   const today = todayString();
 
-  renderTable("realtimeTodayTable", ["번호", "시간", "관리번호", "위치", "구분", "내용", "조치사항"],
-    realtimeRecords.filter((r) => r.date === today).map((r, idx) => [idx + 1, `${r.startTime || "-"}~${r.endTime || "-"}`, r.manageNo, r.location, r.category, r.content, r.note]), [0]);
+  renderTable("realtimeTodayTable", ["번호", "신고/출동/종료", "기관", "관리번호", "위치", "구분", "내용", "조치사항"],
+    realtimeRecords.filter((r) => r.date === today).map((r, idx) => [idx + 1, `${r.startTime || "-"} / ${r.dispatchTime || "-"} / ${r.endTime || "-"}`, r.agency || "", r.manageNo, r.location, r.category, r.content, r.note]), [0]);
 
   renderTable("policeTodayTable", ["번호", "시간", "구분", "요청기관", "관리번호", "주소/위치", "내용", "조치사항"],
     policeRecords.filter((r) => r.date === today).map((r, idx) => [idx + 1, r.time, r.category, r.agency, r.manageNo, r.location, r.content, r.action]), [0]);
 
-  renderTable("civilTodayTable", ["번호", "시간", "민원종류", "민원인정보", "관리번호", "위치", "민원내용", "조치사항"],
-    civilRecords.filter((r) => r.date === today).map((r, idx) => [idx + 1, r.time, civilTitle(r), r.complainantInfo, r.manageNo, r.location, r.content, r.action]), [0]);
+  renderTable("civilTodayTable", ["번호", "시간", "민원종류", "민원인정보", "연락처", "관리번호", "위치", "민원내용", "조치사항"],
+    civilRecords.filter((r) => r.date === today).map((r, idx) => [idx + 1, r.time, civilTitle(r), r.complainantInfo, r.complainantPhone, r.manageNo, r.location, r.content, r.action]), [0]);
 
-  renderTable("infoTodayTable", ["번호", "접수일", "접수번호", "관리번호", "청구인", "연락처", "청구내용", "비고"],
-    infoRecords.filter((r) => r.date === today).map((r, idx) => [idx + 1, r.date, r.receiptNo, r.manageNo, r.claimantName, r.claimantPhone, r.content, r.note]), [0]);
+  renderTable("infoTodayTable", ["번호", "접수일", "청구일", "열람희망", "결과", "접수번호", "관리번호", "청구인", "연락처", "청구내용", "비고"],
+    infoRecords.filter((r) => r.date === today).map((r, idx) => [idx + 1, r.date, r.claimDate, formatInfoDesired(r), r.result, r.receiptNo, r.manageNo, r.claimantName, r.claimantPhone, r.content, r.note]), [0]);
 
   renderApprovalHome();
   renderDestroyHome();
@@ -1025,8 +1045,8 @@ function countCivilByPeriodLabel(key, label) {
 function renderMonthlySpecials(key) {
   renderTable("monthPersonalSpecialTable", ["번호", "날짜", "구분", "관리번호", "위치", "내용", "비고"],
     personalSpecials.filter((r) => r.date.startsWith(key)).map((r, idx) => [idx + 1, r.date, r.category, r.manageNo, r.location, r.content, r.note]), [0]);
-  renderTable("monthTeamSpecialTable", ["번호", "날짜", "시간", "구분", "요청기관", "관리번호", "내용", "조치사항"],
-    teamSpecials.filter((r) => r.date.startsWith(key)).map((r, idx) => [idx + 1, r.date, r.time, r.category, r.agency, r.manageNo, r.content, r.action]), [0]);
+  renderTable("monthTeamSpecialTable", ["번호", "날짜", "시간", "제목", "요청기관", "관리번호", "관제요원", "사건개요", "처리결과"],
+    teamSpecials.filter((r) => r.date.startsWith(key)).map((r, idx) => [idx + 1, r.date, r.time, r.specialTitle || r.category, r.agency, r.manageNo, r.operators || r.user, r.content, r.action]), [0]);
 }
 
 function renderMonthlyDocs(key) {
@@ -1110,6 +1130,16 @@ function filterRefsByCategory(refs, category) {
   });
 }
 
+function getPeriodDateList(period, fallbackDates) {
+  if (/^\d{4}-\d{2}$/.test(period)) {
+    const [year, month] = period.split("-").map(Number);
+    const lastDay = new Date(year, month, 0).getDate();
+    return Array.from({ length: lastDay }, (_, idx) => `${year}-${String(month).padStart(2, "0")}-${String(idx + 1).padStart(2, "0")}`).reverse();
+  }
+
+  return Array.from(fallbackDates).sort().reverse();
+}
+
 function getDailyPayload(period, category = "") {
   if (category) {
     const refsByCategory = {
@@ -1129,24 +1159,27 @@ function getDailyPayload(period, category = "") {
     if (r.date && r.date.startsWith(period)) dates.add(r.date);
   });
 
-  const html = Array.from(dates).sort().reverse().map((date) => {
-    const rt = realtimeRecords.filter((r) => r.date === date).length;
-    const cv = civilRecords.filter((r) => r.date === date).length;
-    const po = policeRecords.filter((r) => r.date === date).length;
-    const vi = videoRecords.filter((r) => r.date === date).length;
-    const inf = infoRecords.filter((r) => r.date === date).length;
+  const html = `
+    <div class="dateSummaryTableWrap">
+      <table class="dateSummaryListTable">
+        <thead>
+          <tr><th>날짜</th><th>개인</th><th>민원</th><th>경찰</th><th>영상</th><th>정보</th></tr>
+        </thead>
+        <tbody>
+          ${getPeriodDateList(period, dates).map((date) => {
+            const rt = realtimeRecords.filter((r) => r.date === date).length;
+            const cv = civilRecords.filter((r) => r.date === date).length;
+            const po = policeRecords.filter((r) => r.date === date).length;
+            const vi = videoRecords.filter((r) => r.date === date).length;
+            const inf = infoRecords.filter((r) => r.date === date).length;
+            const hasRecord = rt + cv + po + vi + inf > 0;
 
-    return `<button class="dateSummaryCard" type="button" data-date-detail="${escapeHtml(date)}">
-      <strong>${escapeHtml(date)}</strong>
-      <div class="dateSummaryStats">
-        <span>개인 ${rt}</span>
-        <span>민원처리 ${cv}</span>
-        <span>경찰 ${po}</span>
-        <span>영상 ${vi}</span>
-        <span>정보 ${inf}</span>
-      </div>
-    </button>`;
-  }).join("");
+            return `<tr class="${hasRecord ? "hasRecord" : ""}" data-date-detail="${escapeHtml(date)}"><td>${escapeHtml(date)}</td><td>${rt}</td><td>${cv}</td><td>${po}</td><td>${vi}</td><td>${inf}</td></tr>`;
+          }).join("")}
+        </tbody>
+      </table>
+    </div>
+  `;
 
   return { title: "일자별 현황", html };
 }
@@ -1166,7 +1199,14 @@ function ref(type, item, prefix = "") { return { type, item, prefix }; }
 
 function renderRecordList(refs) {
   if (!refs.length) return '<div class="emptyList">기록 없음</div>';
-  return refs.map(({ type, item, prefix }, idx) => `<button class="recordListItem" type="button" data-edit-type="${type}" data-edit-id="${escapeHtml(item.sourceId || item.id)}"><span class="recordNo">${idx + 1}</span><span class="recordText"><strong>${escapeHtml(recordTitle(type, item, prefix))}</strong><small>${escapeHtml(recordSubText(type, item))}</small></span></button>`).join("");
+
+  const sortedRefs = [...refs].sort((a, b) => {
+    const ad = `${a.item.date || ""} ${a.item.time || a.item.startTime || ""}`;
+    const bd = `${b.item.date || ""} ${b.item.time || b.item.startTime || ""}`;
+    return bd.localeCompare(ad);
+  });
+
+  return sortedRefs.map(({ type, item, prefix }, idx) => `<button class="recordListItem" type="button" data-edit-type="${type}" data-edit-id="${escapeHtml(item.sourceId || item.id)}"><span class="recordNo">${idx + 1}</span><span class="recordText"><strong>${escapeHtml(recordTitle(type, item, prefix))}</strong><small>${escapeHtml(recordSubText(type, item))}</small></span></button>`).join("");
 }
 
 function recordTitle(type, item, prefix = "") {
@@ -1180,11 +1220,11 @@ function recordTitle(type, item, prefix = "") {
 }
 
 function recordSubText(type, item) {
-  if (type === "realtime") return [item.manageNo, item.location, item.content, item.note].filter(Boolean).join(" · ");
-  if (type === "civil") return [item.complainantInfo, item.manageNo, item.location, item.content, item.action].filter(Boolean).join(" · ");
-  if (type === "police") return [item.agency, item.manageNo, item.location, item.content, item.action].filter(Boolean).join(" · ");
+  if (type === "realtime") return [item.agency, item.manageNo, item.location, item.content, item.note].filter(Boolean).join(" · ");
+  if (type === "civil") return [item.complainantInfo, item.complainantPhone, item.manageNo, item.location, item.content, item.action].filter(Boolean).join(" · ");
+  if (type === "police") return [item.specialTitle, item.agency, item.manageNo, item.location, item.content, item.action].filter(Boolean).join(" · ");
   if (type === "video") return [item.content, item.approval ? "사후결재" : "", item.destroy ? "파기공문" : ""].filter(Boolean).join(" · ");
-  if (type === "info") return [item.manageNo, item.claimantName, item.content, item.note].filter(Boolean).join(" · ");
+  if (type === "info") return [item.result, item.claimDate, formatInfoDesired(item), item.manageNo, item.claimantName, item.content, item.note].filter(Boolean).join(" · ");
   return summaryText(item);
 }
 
@@ -1210,7 +1250,9 @@ function openInputModal(type, record = null) {
     $("formRealtime").classList.add("active");
     $("rtDate").value = record?.date || today;
     $("rtStartTime").value = record?.startTime || now;
+    $("rtDispatchTime").value = record?.dispatchTime || "";
     $("rtEndTime").value = record?.endTime || "";
+    setRealtimeAgencyValue(record?.agency || "부평상황실");
     $("rtManageNo").value = record?.manageNo || "";
     $("rtLocation").value = record?.location || "";
     $("rtCategory").value = record?.category || "강력";
@@ -1228,6 +1270,7 @@ function openInputModal(type, record = null) {
     $("civilPhoneOwner").value = record?.phoneOwner || "나";
     $("civilProxyMember").value = record?.proxyMember || "";
     $("civilComplainantInfo").value = record?.complainantInfo || "";
+    $("civilComplainantPhone").value = record?.complainantPhone || "";
     $("civilManageNo").value = record?.manageNo || "";
     $("civilLocation").value = record?.location || "";
     $("civilContent").value = record?.content || "";
@@ -1244,6 +1287,8 @@ function openInputModal(type, record = null) {
     setPoliceAgencyValue(record?.agency || "부평상황실");
     $("policeManageNo").value = record?.manageNo || "";
     $("policeLocation").value = record?.location || "";
+    $("policeSpecialTitle").value = record?.specialTitle || "";
+    $("policeOperators").value = record?.operators || getDefaultOperators();
     $("policeContent").value = record?.content || "";
     $("policeAction").value = record?.action || "";
     updatePoliceAgencyFields();
@@ -1285,6 +1330,10 @@ function openInputModal(type, record = null) {
     $("modalTitle").textContent = record ? "정보공개 수정" : "정보공개 입력";
     $("formInfo").classList.add("active");
     $("infoReceiptDate").value = record?.date || today;
+    $("infoClaimDate").value = record?.claimDate || "";
+    $("infoDesiredDate").value = record?.desiredDate || "";
+    $("infoDesiredTime").value = record?.desiredTime || "";
+    $("infoResult").value = record?.result || "공개";
     $("infoReceiptNo").value = record?.receiptNo || "";
     $("infoManageNo").value = record?.manageNo || "";
     $("infoClaimantName").value = record?.claimantName || "";
@@ -1373,6 +1422,34 @@ function updateCivilFields() {
   show("civilActionGroup", type === "비상벨대응" || type === "비상벨계도" || type === "비상벨기타" || type === "전화민원");
 }
 
+function setRealtimeAgencyValue(value) {
+  const select = $("rtAgency");
+  const direct = $("rtAgencyDirect");
+
+  if (!select || !direct) return;
+
+  const optionValues = Array.from(select.options).map((option) => option.value || option.textContent);
+
+  if (optionValues.includes(value)) {
+    select.value = value;
+    direct.value = "";
+  } else {
+    select.value = "직접입력";
+    direct.value = value || "";
+  }
+
+  updateRealtimeAgencyFields();
+}
+
+function updateRealtimeAgencyFields() {
+  const select = $("rtAgency");
+  const directGroup = $("rtAgencyDirectGroup");
+
+  if (!select || !directGroup) return;
+
+  directGroup.classList.toggle("hidden", select.value !== "직접입력");
+}
+
 function setPoliceAgencyValue(value) {
   const select = $("policeAgency");
   const direct = $("policeAgencyDirect");
@@ -1429,7 +1506,9 @@ function saveRealtimeRecord(e) {
     id: makeId(),
     date: $("rtDate").value || todayString(),
     startTime: $("rtStartTime").value,
+    dispatchTime: $("rtDispatchTime").value,
     endTime: $("rtEndTime").value,
+    agency: $("rtAgency").value === "직접입력" ? $("rtAgencyDirect").value.trim() : $("rtAgency").value,
     manageNo: $("rtManageNo").value.trim(),
     location: $("rtLocation").value.trim(),
     category: $("rtCategory").value,
@@ -1456,6 +1535,7 @@ function saveCivilRecord(e) {
     phoneOwner: $("civilType").value === "전화민원" ? $("civilPhoneOwner").value : "",
     proxyMember: $("civilType").value === "전화민원" ? $("civilProxyMember").value.trim() : "",
     complainantInfo: $("civilComplainantInfo").value.trim(),
+    complainantPhone: $("civilComplainantPhone").value.trim(),
     manageNo: $("civilManageNo").value.trim(),
     location: $("civilLocation").value.trim(),
     content: $("civilContent").value.trim(),
@@ -1481,6 +1561,8 @@ function savePoliceRecord(e) {
     agency: $("policeAgency").value === "직접입력" ? $("policeAgencyDirect").value.trim() : $("policeAgency").value,
     manageNo: $("policeManageNo").value.trim(),
     location: $("policeLocation").value.trim(),
+    specialTitle: $("policeSpecialTitle").value.trim(),
+    operators: $("policeOperators").value.trim(),
     content: $("policeContent").value.trim(),
     action: $("policeAction").value.trim(),
     createdAt: new Date().toISOString(),
@@ -1549,6 +1631,10 @@ function saveInfoRecord(e) {
   const record = {
     id: editState?.type === "info" ? editState.id : makeId(),
     date: $("infoReceiptDate").value || todayString(),
+    claimDate: $("infoClaimDate").value,
+    desiredDate: $("infoDesiredDate").value,
+    desiredTime: $("infoDesiredTime").value,
+    result: $("infoResult").value,
     receiptNo: $("infoReceiptNo").value.trim(),
     manageNo: $("infoManageNo").value.trim(),
     claimantName: $("infoClaimantName").value.trim(),
@@ -1734,6 +1820,15 @@ function getUserName() {
   return settings.currentUser || members[0] || "사용자";
 }
 
+function getDefaultOperators() {
+  const members = settings.teams?.[settings.activeTeam] || [];
+  return members.length ? members.filter(Boolean).join(", ") : getUserName();
+}
+
+function formatInfoDesired(item) {
+  return [item.desiredDate, item.desiredTime].filter(Boolean).join(" ");
+}
+
 function formatKoreanDate(dateStringValue) {
   if (!dateStringValue) return "-";
   const d = parseDateOnly(dateStringValue);
@@ -1812,12 +1907,33 @@ function printReportPreview() {
   setTimeout(() => document.body.classList.remove("printingReport"), 500);
 }
 
+function getDailyLogRows(date) {
+  const realtime = realtimeRecords.filter((r) => r.date === date).map((r) => ({
+    sortTime: r.startTime || "",
+    time: [r.startTime, r.dispatchTime, r.endTime].filter(Boolean).join(" / "),
+    manageNo: r.manageNo,
+    location: r.location,
+    category: r.category,
+    content: r.content,
+    result: r.note,
+  }));
+
+  const bellResponse = civilRecords.filter((r) => r.date === date && r.type === "비상벨대응").map((r) => ({
+    sortTime: r.time || "",
+    time: r.time || "",
+    manageNo: r.manageNo,
+    location: r.location,
+    category: "비상벨대응",
+    content: r.content,
+    result: r.action,
+  }));
+
+  return [...realtime, ...bellResponse].sort((a, b) => String(a.sortTime).localeCompare(String(b.sortTime)));
+}
+
 function buildDailyReport(date) {
   const counts = dailyCountSet(date);
-  const realtimeRows = realtimeRecords
-    .filter((r) => r.date === date)
-    .sort((a, b) => String(a.startTime || "").localeCompare(String(b.startTime || "")))
-    .slice(0, 4);
+  const realtimeRows = getDailyLogRows(date).slice(0, 4);
 
   const dayRealtime = realtimeRecords.filter((r) => r.date === date);
   const dayCivil = civilRecords.filter((r) => r.date === date);
@@ -1895,7 +2011,7 @@ function buildDailyReport(date) {
         <tbody>
           ${[0, 1, 2, 3].map((idx) => {
             const r = realtimeRows[idx];
-            return `<tr><td>${idx + 1}</td><td>${escapeHtml(r ? `${r.startTime || ""}~${r.endTime || ""}` : "")}</td><td>${escapeHtml(r?.manageNo || "")}</td><td>${escapeHtml(r?.location || "")}</td><td>${escapeHtml(r?.category || "")}</td><td>${escapeHtml(r?.content || "")}</td><td>${escapeHtml(r?.note || "")}</td></tr>`;
+            return `<tr><td>${idx + 1}</td><td>${escapeHtml(r ? r.time || "" : "")}</td><td>${escapeHtml(r?.manageNo || "")}</td><td>${escapeHtml(r?.location || "")}</td><td>${escapeHtml(r?.category || "")}</td><td>${escapeHtml(r?.content || "")}</td><td>${escapeHtml(r?.result || "")}</td></tr>`;
           }).join("")}
         </tbody>
       </table>
@@ -2077,15 +2193,19 @@ function reportLines(lines) {
 }
 
 function reportPoliceLine(item) {
-  return `□ [${escapeHtml(item.category || "경찰관제요청")}]<br>- 요청기관: ${escapeHtml(item.agency || "")}<br>- 장 소: ${escapeHtml(item.location || "")} (${escapeHtml(item.manageNo || "")})<br>- 사건개요: ${escapeHtml(item.content || "")}<br>- 처리결과: ${escapeHtml(item.action || "")}`;
+  const title = item.specialTitle || item.category || "경찰관제요청";
+  const operators = item.operators || item.user || getUserName();
+  return `□ [${escapeHtml(title)}]<br>- 장    소: ${escapeHtml(item.location || "")} (${escapeHtml(item.manageNo || "")})<br>- 관제요원: ${escapeHtml(operators)}<br>- 사건개요: ${escapeHtml(item.content || "")}<br>- 처리결과: ${escapeHtml(item.action || "")}`;
 }
 
 function reportCivilLine(item) {
-  return `□ [${escapeHtml(item.type || "민원처리")}]<br>- 장 소: ${escapeHtml(item.location || "")} (${escapeHtml(item.manageNo || "")})<br>- 내용: ${escapeHtml(item.content || "")}<br>- 처리결과: ${escapeHtml(item.action || "")}`;
+  const operators = item.operators || item.user || getUserName();
+  return `□ [${escapeHtml(item.specialTitle || item.type || "민원처리")}]<br>- 장    소: ${escapeHtml(item.location || "")} (${escapeHtml(item.manageNo || "")})<br>- 관제요원: ${escapeHtml(operators)}<br>- 사건개요: ${escapeHtml(item.content || "")}<br>- 처리결과: ${escapeHtml(item.action || "")}`;
 }
 
 function reportInfoLine(item) {
-  return `□ [정보공개]<br>- 접수번호: ${escapeHtml(item.receiptNo || "")}<br>- 관리번호: ${escapeHtml(item.manageNo || "")}<br>- 청구인: ${escapeHtml(item.claimantName || "")}<br>- 내용: ${escapeHtml(item.content || "")}`;
+  const desired = formatInfoDesired(item);
+  return `□ [정보공개 ${escapeHtml(item.result || "")}]<br>- 접수번호: ${escapeHtml(item.receiptNo || "")}<br>- 청구일: ${escapeHtml(item.claimDate || "")}<br>- 열람희망: ${escapeHtml(desired)}<br>- 관리번호: ${escapeHtml(item.manageNo || "")}<br>- 청구인: ${escapeHtml(item.claimantName || "")}<br>- 사건개요: ${escapeHtml(item.content || "")}<br>- 처리결과: ${escapeHtml(item.note || item.result || "")}`;
 }
 
 function renderMonthSearch() {
@@ -2139,8 +2259,8 @@ function getSearchText(item, scope) {
   if (scope === "docNo") return [item.receiptNo, item.approval?.docNo, item.destroy?.docNo, item.destroy?.sendDocNo].join(" ");
 
   return [
-    item.date, item.time, item.startTime, item.endTime, item.manageNo, item.location, item.category, item.type, item.process,
-    item.agency, item.complainantInfo, item.claimantName, item.claimantPhone, item.receiptNo, item.content, item.action, item.note,
+    item.date, item.time, item.startTime, item.dispatchTime, item.endTime, item.agency, item.specialTitle, item.operators, item.manageNo, item.location, item.category, item.type, item.process,
+    item.agency, item.complainantInfo, item.complainantPhone, item.claimDate, item.desiredDate, item.desiredTime, item.result, item.claimantName, item.claimantPhone, item.receiptNo, item.content, item.action, item.note,
     approvalDoc, destroyDoc,
   ].join(" ");
 }

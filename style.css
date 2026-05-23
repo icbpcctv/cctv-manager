@@ -3883,3 +3883,105 @@ body.printingReport #closeReportModal {
     padding: 0;
   }
 }
+
+
+/* =====================
+   v0.7.8 field/report usability fixes
+===================== */
+
+.threeTimeRow {
+  grid-template-columns: repeat(3, 1fr) !important;
+}
+
+.headerCenter .appLogo,
+.appLogo {
+  width: 66px !important;
+  max-width: 66px !important;
+}
+
+.themePreviewGrid {
+  display: none !important;
+}
+
+.dateSummaryTableWrap {
+  max-height: 62vh;
+  overflow-y: auto;
+  border: 1px solid rgba(230,233,238,0.92);
+  border-radius: 14px;
+}
+
+.dateSummaryListTable {
+  width: 100%;
+  min-width: 0 !important;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.dateSummaryListTable th,
+.dateSummaryListTable td {
+  padding: 8px 5px !important;
+  text-align: center !important;
+  vertical-align: middle !important;
+}
+
+.dateSummaryListTable th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: #f7f9fb !important;
+}
+
+.dateSummaryListTable tr {
+  cursor: pointer;
+}
+
+.dateSummaryListTable tr.hasRecord td {
+  color: var(--accent-blue);
+  font-weight: 750;
+  background: var(--surface-blue);
+}
+
+.dateSummaryListTable td:first-child {
+  color: var(--text);
+  font-weight: 750;
+  white-space: nowrap;
+}
+
+#inputModal .dateTimeRow.threeTimeRow input {
+  min-width: 0;
+}
+
+.reportSpecialTable td,
+.monthlySpecialOutput td:nth-child(2) {
+  line-height: 1.5 !important;
+}
+
+@media (max-width: 390px) {
+  .headerCenter .appLogo,
+  .appLogo {
+    width: 56px !important;
+    max-width: 56px !important;
+  }
+
+  .threeTimeRow {
+    gap: 5px !important;
+  }
+
+  .threeTimeRow label {
+    font-size: 11px !important;
+  }
+
+  .threeTimeRow input {
+    padding-left: 6px !important;
+    padding-right: 6px !important;
+  }
+
+  .dateSummaryListTable {
+    font-size: 11px;
+  }
+
+  .dateSummaryListTable th,
+  .dateSummaryListTable td {
+    padding: 7px 3px !important;
+  }
+}
