@@ -3582,3 +3582,304 @@ body.printingReport #closeReportModal {
     grid-template-columns: 1fr;
   }
 }
+
+
+/* =====================
+   v0.7.7 report template refinement
+===================== */
+
+.reportDoc.reportPaper {
+  width: 794px;
+  max-width: 100%;
+  margin: 0 auto;
+  padding: 22px 20px;
+  border-radius: 10px;
+  background: #fff;
+  color: #111;
+  font-family: "Malgun Gothic", "Apple SD Gothic Neo", sans-serif;
+  box-sizing: border-box;
+}
+
+.reportTable {
+  border-collapse: collapse !important;
+  background: #fff !important;
+  color: #111 !important;
+}
+
+.reportTable th,
+.reportTable td {
+  border: 1.2px solid #222 !important;
+  color: #111 !important;
+  background: #fff !important;
+  padding: 4px 4px !important;
+  text-align: center !important;
+  vertical-align: middle !important;
+  font-weight: 400 !important;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+
+.reportTable th {
+  background: #efefef !important;
+  font-weight: 800 !important;
+}
+
+.dailyReport {
+  font-size: 12px;
+}
+
+.dailyTitle {
+  margin: 0 0 8px !important;
+  padding-bottom: 3px;
+  border-bottom: 3px solid #111;
+  font-size: 29px !important;
+  line-height: 1.15 !important;
+  font-weight: 900 !important;
+  letter-spacing: 2px;
+  text-align: left !important;
+}
+
+.dailyWorker {
+  margin: 0 0 6px !important;
+  font-size: 14px !important;
+  font-weight: 800 !important;
+}
+
+.dailySection {
+  margin: 9px 0 5px !important;
+  font-size: 16px !important;
+  line-height: 1.15 !important;
+  font-weight: 900 !important;
+}
+
+.dailyStatsTable {
+  table-layout: fixed;
+  font-size: 10.5px !important;
+}
+
+.dailyStatsTable th,
+.dailyStatsTable td {
+  height: 25px;
+  padding: 2px 2px !important;
+  line-height: 1.05;
+}
+
+.dailyStatsTable .dailyTotalHead {
+  width: 38px;
+}
+
+.dailyStatsTable .dailyTotalValue {
+  font-weight: 800 !important;
+}
+
+.dailyLogTable {
+  table-layout: fixed;
+  font-size: 11px !important;
+}
+
+.dailyLogTable th,
+.dailyLogTable td {
+  height: 50px;
+  padding: 3px !important;
+}
+
+.dailyLogTable th:nth-child(1), .dailyLogTable td:nth-child(1) { width: 22px; }
+.dailyLogTable th:nth-child(2), .dailyLogTable td:nth-child(2) { width: 78px; }
+.dailyLogTable th:nth-child(3), .dailyLogTable td:nth-child(3) { width: 86px; }
+.dailyLogTable th:nth-child(4), .dailyLogTable td:nth-child(4) { width: 96px; }
+.dailyLogTable th:nth-child(5), .dailyLogTable td:nth-child(5) { width: 70px; }
+.dailyLogTable td:nth-child(6), .dailyLogTable td:nth-child(7) {
+  text-align: left !important;
+  line-height: 1.35;
+}
+
+.dailySpecialTable {
+  table-layout: fixed;
+  font-size: 11px !important;
+}
+
+.dailySpecialTable th {
+  width: 146px;
+  background: #fff !important;
+  line-height: 1.35;
+}
+
+.dailySpecialTable td {
+  min-height: 58px;
+  height: 58px;
+  text-align: left !important;
+  line-height: 1.45;
+}
+
+.dailySpecialTable tr:first-child td {
+  height: 92px;
+}
+
+.reportTo {
+  margin: 0 0 12px;
+  font-size: 12px;
+  text-align: left;
+}
+
+.monthlyTitle {
+  margin: 0 0 24px !important;
+  font-size: 24px !important;
+  line-height: 1.25 !important;
+  font-weight: 900 !important;
+  text-align: center !important;
+}
+
+.monthlySectionTitle {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 16px 0 9px;
+  color: #566018;
+}
+
+.monthlySectionTitle span {
+  display: inline-grid;
+  place-items: center;
+  width: 28px;
+  height: 34px;
+  border: 2px solid #6b711f;
+  font-weight: 900;
+}
+
+.monthlySectionTitle strong {
+  padding: 4px 10px 5px;
+  border-top: 3px solid #6b711f;
+  border-bottom: 3px solid #6b711f;
+  font-size: 18px;
+  font-weight: 900;
+}
+
+.monthlySubTitle {
+  margin: 12px 0 6px !important;
+  font-size: 14px !important;
+  line-height: 1.2 !important;
+  font-weight: 900 !important;
+  text-align: left !important;
+}
+
+.monthlySubTitle em {
+  float: right;
+  font-style: normal;
+  font-size: 10px;
+  font-weight: 400;
+}
+
+.monthlyNote {
+  margin: 6px 0 18px;
+  padding-bottom: 8px;
+  border-bottom: 2px solid #222;
+  font-size: 12px;
+  line-height: 1.45;
+  text-align: center;
+}
+
+.monthlyStaffTable {
+  table-layout: fixed;
+  font-size: 12px !important;
+}
+
+.monthlyStaffTable th,
+.monthlyStaffTable td {
+  height: 30px;
+}
+
+.monthlyWorkerTable {
+  table-layout: fixed;
+  font-size: 8.7px !important;
+}
+
+.monthlyWorkerTable th,
+.monthlyWorkerTable td {
+  height: 22px;
+  padding: 2px 1px !important;
+  line-height: 1.05;
+}
+
+.monthlyWorkerTable th:nth-child(1) { width: 32px; }
+.monthlyWorkerTable th:nth-child(2) { width: 56px; }
+.monthlyWorkerTable .reportTotalRow th,
+.monthlyWorkerTable .reportTotalRow td {
+  font-weight: 800 !important;
+}
+
+.monthlyDetailTable {
+  table-layout: fixed;
+  font-size: 10.5px !important;
+}
+
+.monthlyDetailTable th:nth-child(1) { width: 118px; }
+.monthlyDetailTable th:nth-child(3) { width: 76px; }
+.monthlyDetailTable td:nth-child(2) {
+  text-align: left !important;
+  line-height: 1.35;
+}
+
+.monthlyServiceTable {
+  table-layout: fixed;
+  font-size: 10.5px !important;
+}
+
+.monthlyServiceTable th,
+.monthlyServiceTable td {
+  height: 42px;
+}
+
+.monthlySimpleTable {
+  table-layout: fixed;
+  font-size: 9.8px !important;
+  margin-bottom: 10px;
+}
+
+.monthlySimpleTable th,
+.monthlySimpleTable td {
+  height: 24px;
+  padding: 2px !important;
+}
+
+.monthlyRomanTitle {
+  margin: 20px 0 8px !important;
+  font-size: 17px !important;
+  font-weight: 900 !important;
+  text-align: left !important;
+}
+
+.monthlySpecialOutput {
+  table-layout: fixed;
+  font-size: 11px !important;
+}
+
+.monthlySpecialOutput th:first-child,
+.monthlySpecialOutput td:first-child {
+  width: 116px;
+  text-align: center !important;
+  line-height: 1.35;
+}
+
+.monthlySpecialOutput td:nth-child(2) {
+  text-align: left !important;
+  line-height: 1.5;
+  padding: 8px 10px !important;
+}
+
+.reportSpecialTable p,
+.monthlySpecialOutput p {
+  margin: 0 0 6px;
+}
+
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 10mm;
+  }
+
+  body.printingReport .reportDoc.reportPaper {
+    width: 100%;
+    max-width: none;
+    padding: 0;
+  }
+}

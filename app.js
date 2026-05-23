@@ -1,4 +1,4 @@
-const APP_VERSION = "0.7.6";
+const APP_VERSION = "0.7.7";
 const KAKAO_EXTERNAL_MAP_URL = "https://map.kakao.com/";
 const DEFAULT_MAP_CENTER = { lat: 37.5070, lng: 126.7218 };
 const DEFAULT_MAP_LABEL = "부평구청";
@@ -1436,6 +1436,8 @@ function saveRealtimeRecord(e) {
     content: $("rtContent").value.trim(),
     note: $("rtNote").value.trim(),
     createdAt: new Date().toISOString(),
+    team: settings.activeTeam || "1조",
+    user: getUserName(),
   };
   const saved = saveRecordToList("realtime", realtimeRecords, record);
   if ($("rtPersonalSpecial").checked) personalSpecials.push({ ...saved, id: makeId(), sourceId: saved.id });
@@ -1459,6 +1461,8 @@ function saveCivilRecord(e) {
     content: $("civilContent").value.trim(),
     action: $("civilAction").value.trim(),
     createdAt: new Date().toISOString(),
+    team: settings.activeTeam || "1조",
+    user: getUserName(),
   };
 
   saveRecordToList("civil", civilRecords, record);
@@ -1480,6 +1484,8 @@ function savePoliceRecord(e) {
     content: $("policeContent").value.trim(),
     action: $("policeAction").value.trim(),
     createdAt: new Date().toISOString(),
+    team: settings.activeTeam || "1조",
+    user: getUserName(),
   };
   const saved = saveRecordToList("police", policeRecords, record);
   if ($("policeTeamSpecial").checked) teamSpecials.push({ ...saved, id: makeId(), sourceId: saved.id });
@@ -1500,6 +1506,8 @@ function saveVideoRecord(e) {
     approval: null,
     destroy: null,
     createdAt: new Date().toISOString(),
+    team: settings.activeTeam || "1조",
+    user: getUserName(),
   };
 
   if ($("videoApprovalCheck").checked) {
@@ -1548,6 +1556,8 @@ function saveInfoRecord(e) {
     content: $("infoContent").value.trim(),
     note: $("infoNote").value.trim(),
     createdAt: new Date().toISOString(),
+    team: settings.activeTeam || "1조",
+    user: getUserName(),
   };
 
   saveRecordToList("info", infoRecords, record);
@@ -1807,53 +1817,81 @@ function buildDailyReport(date) {
   const realtimeRows = realtimeRecords
     .filter((r) => r.date === date)
     .sort((a, b) => String(a.startTime || "").localeCompare(String(b.startTime || "")))
-    .slice(0, 8);
+    .slice(0, 4);
 
-  const specialPolice = policeRecords.filter((r) => r.date === date);
-  const phoneCivil = civilRecords.filter((r) => r.date === date && r.type === "전화민원");
-  const specialCivil = civilRecords.filter((r) => r.date === date && r.type !== "전화민원");
-  const info = infoRecords.filter((r) => r.date === date);
+  const dayRealtime = realtimeRecords.filter((r) => r.date === date);
+  const dayCivil = civilRecords.filter((r) => r.date === date);
+  const dayPolice = policeRecords.filter((r) => r.date === date);
+  const dayVideo = videoRecords.filter((r) => r.date === date);
+  const dayInfo = infoRecords.filter((r) => r.date === date);
+
+  const monthKey = getMonthlyKeyFromDate(date);
+  const monthRealtime = realtimeRecords.filter((r) => r.date.startsWith(monthKey));
+  const monthCivil = civilRecords.filter((r) => r.date.startsWith(monthKey));
+  const monthPolice = policeRecords.filter((r) => r.date.startsWith(monthKey));
+  const monthVideo = videoRecords.filter((r) => r.date.startsWith(monthKey));
+  const monthInfo = infoRecords.filter((r) => r.date.startsWith(monthKey));
+
+  const dailyCols = [
+    { label: "강력<br>범죄", day: countBy(dayRealtime, (r) => r.category === "강력"), month: countBy(monthRealtime, (r) => r.category === "강력") },
+    { label: "경범죄", day: countBy(dayRealtime, (r) => r.category === "경범죄"), month: countBy(monthRealtime, (r) => r.category === "경범죄") },
+    { label: "청소년<br>비위", day: countBy(dayRealtime, (r) => r.category === "청소년"), month: countBy(monthRealtime, (r) => r.category === "청소년") },
+    { label: "재난/<br>화재", day: countBy(dayRealtime, (r) => r.category === "재난"), month: countBy(monthRealtime, (r) => r.category === "재난") },
+    { label: "교통사고<br>안전대응", day: countBy(dayRealtime, (r) => r.category === "교통사고"), month: countBy(monthRealtime, (r) => r.category === "교통사고") },
+    { label: "기타<br>사항", day: countBy(dayRealtime, (r) => r.category === "기타"), month: countBy(monthRealtime, (r) => r.category === "기타") },
+    { label: "대응", day: countBy(dayCivil, (r) => r.type === "비상벨대응"), month: countBy(monthCivil, (r) => r.type === "비상벨대응") },
+    { label: "기타", day: countBy(dayCivil, (r) => r.type === "비상벨기타"), month: countBy(monthCivil, (r) => r.type === "비상벨기타") },
+    { label: "계도", day: countBy(dayCivil, (r) => r.type === "비상벨계도"), month: countBy(monthCivil, (r) => r.type === "비상벨계도") },
+    { label: "전화<br>민원", day: countBy(dayCivil, (r) => r.type === "전화민원") + dayInfo.length, month: countBy(monthCivil, (r) => r.type === "전화민원") + monthInfo.length },
+    { label: "경찰<br>관제<br>요청", day: dayPolice.length, month: monthPolice.length },
+    { label: "영상<br>열람<br>반출", day: dayVideo.length, month: monthVideo.length },
+  ];
+  const dayTotal = sum(dailyCols.map((item) => item.day));
+  const monthTotal = sum(dailyCols.map((item) => item.month));
+
+  const specialPolice = dayPolice;
+  const phoneCivil = dayCivil.filter((r) => r.type === "전화민원");
+  const specialCivil = dayCivil.filter((r) => r.type !== "전화민원");
+  const info = dayInfo;
 
   return `
-    <article class="reportDoc dailyReport">
-      <h1>CCTV 관제 근무일지(${escapeHtml(formatReportDateTitle(date))})</h1>
-      <p class="reportWorker">■ 근무자 : ${escapeHtml(getUserName())} (${escapeHtml(settings.activeTeam || "1조")})</p>
+    <article class="reportDoc dailyReport reportPaper">
+      <h1 class="dailyTitle">CCTV 관제 근무일지(${escapeHtml(formatReportDateTitle(date))})</h1>
+      <p class="reportWorker dailyWorker">■ 근무자 : ${escapeHtml(getUserName())} (${escapeHtml(settings.activeTeam || "1조")})</p>
 
-      <h2>■ CCTV 관제 대응 실적</h2>
-      <table class="reportTable">
+      <h2 class="dailySection">■ CCTV 관제 대응 실적</h2>
+      <table class="dailyStatsTable reportTable">
         <thead>
           <tr>
-            <th rowspan="2">구분</th>
-            ${counts.realtime.map((item) => `<th>${escapeHtml(item.category)}</th>`).join("")}
-            ${counts.civil.map((item) => `<th>${escapeHtml(item.label)}</th>`).join("")}
-            <th>경찰관제요청</th>
-            <th>영상열람반출</th>
-            <th>합계</th>
+            <th rowspan="3" class="dailyTotalHead">합계</th>
+            <th colspan="6">실시간 사건·사고 경찰신고</th>
+            <th colspan="4">민원처리</th>
+            <th rowspan="3">경찰<br>관제<br>요청</th>
+            <th rowspan="3">영상<br>열람<br>반출</th>
           </tr>
+          <tr>
+            <th rowspan="2">강력<br>범죄</th>
+            <th rowspan="2">경범죄</th>
+            <th rowspan="2">청소년<br>비위</th>
+            <th rowspan="2">재난/<br>화재</th>
+            <th rowspan="2">교통사고<br>안전대응</th>
+            <th rowspan="2">기타<br>사항</th>
+            <th colspan="3">비상벨</th>
+            <th rowspan="2">전화<br>민원</th>
+          </tr>
+          <tr><th>대응</th><th>기타</th><th>계도</th></tr>
         </thead>
         <tbody>
-          <tr>
-            <th>금일건수</th>
-            ${counts.realtime.map((item) => `<td>${item.today}</td>`).join("")}
-            ${counts.civil.map((item) => `<td>${item.today}</td>`).join("")}
-            <td>${counts.police.today}</td>
-            <td>${counts.video.today}</td>
-            <td>${counts.totals.today}</td>
-          </tr>
-          <tr>
-            <th>월 누계</th>
-            ${counts.realtime.map((item) => `<td>${item.month}</td>`).join("")}
-            ${counts.civil.map((item) => `<td>${item.month}</td>`).join("")}
-            <td>${counts.police.month}</td>
-            <td>${counts.video.month}</td>
-            <td>${counts.totals.month}</td>
-          </tr>
+          <tr><th>금일건수</th>${dailyCols.map((item) => `<td>${item.day}</td>`).join("")}<td class="dailyTotalValue">${dayTotal}</td></tr>
+          <tr><th>월 누계</th>${dailyCols.map((item) => `<td>${item.month}</td>`).join("")}<td class="dailyTotalValue">${monthTotal}</td></tr>
         </tbody>
       </table>
 
-      <h2>■ CCTV 관제일지</h2>
-      <table class="reportTable reportLogTable">
-        <thead><tr><th>번호</th><th>시간</th><th>CCTV 관리번호</th><th>위치</th><th>구분</th><th>관제내용</th><th>결과</th></tr></thead>
+      <h2 class="dailySection">■ CCTV 관제일지(모니터링 : &nbsp;&nbsp;&nbsp; 구역)</h2>
+      <table class="dailyLogTable reportTable">
+        <thead>
+          <tr><th class="dailyNoHead"></th><th>시간</th><th>CCTV<br>관리번호</th><th>위치</th><th>구분</th><th>관제내용</th><th>결과</th></tr>
+        </thead>
         <tbody>
           ${[0, 1, 2, 3].map((idx) => {
             const r = realtimeRows[idx];
@@ -1862,10 +1900,10 @@ function buildDailyReport(date) {
         </tbody>
       </table>
 
-      <h2>■ CCTV 관제 특이사항(상세내용)</h2>
-      <table class="reportTable reportSpecialTable">
+      <h2 class="dailySection">■ CCTV 관제 특이사항(상세내용)</h2>
+      <table class="dailySpecialTable reportTable">
         <tbody>
-          <tr><th>경찰서 상황실, 지구대 요청에 따른 조치사항</th><td>${reportLines(specialPolice.map(reportPoliceLine))}</td></tr>
+          <tr><th>경찰서 상황실,<br>지구대 요청에<br>따른 조치사항</th><td>${reportLines(specialPolice.map(reportPoliceLine))}</td></tr>
           <tr><th>전화 민원<br>(정보공개 청구 등)</th><td>${reportLines([...phoneCivil.map(reportCivilLine), ...info.map(reportInfoLine)])}</td></tr>
           <tr><th>고장 신고 접수</th><td></td></tr>
           <tr><th>기타 특이사항</th><td>${reportLines(specialCivil.map(reportCivilLine))}</td></tr>
@@ -1892,36 +1930,147 @@ function buildMonthlyReport(key) {
   const mainSpecials = teamSpecials.filter((r) => r.date.startsWith(key));
   const bellSpecials = civilRecords.filter((r) => r.date.startsWith(key) && ["비상벨대응", "비상벨계도", "비상벨기타"].includes(r.type));
 
+  const totalRow = [
+    ...rt,
+    civil.bellResponse,
+    civil.bellGuide,
+    civil.bellEtc,
+    civil.phone,
+    civil.info,
+    sum(police),
+    videoView + videoCopy,
+  ];
+  const responseTotal = sum(rt) + civil.bellResponse + civil.bellGuide + civil.bellEtc + civil.phone + civil.info;
+
   return `
-    <article class="reportDoc monthlyReport">
-      <h1>${escapeHtml(title)} CCTV통합관제센터<br>모니터링 및 영상제공 현황 보고</h1>
+    <article class="reportDoc monthlyReport reportPaper">
+      <p class="reportTo">국장님</p>
+      <h1 class="monthlyTitle">${escapeHtml(title)} CCTV통합관제센터<br>모니터링 및 영상제공 현황 보고</h1>
 
-      <h2>Ⅰ 관제센터 근무현황</h2>
-      <table class="reportTable"><tbody><tr><th>계</th><th>관제요원</th><th>유지보수</th><th>공무원</th><th>사회복무요원</th></tr><tr><td>18명</td><td>16명</td><td>1명</td><td>1명</td><td>-</td></tr></tbody></table>
+      <div class="monthlySectionTitle"><span>Ⅰ</span><strong>관제센터 근무현황</strong></div>
+      <table class="reportTable monthlyStaffTable">
+        <tbody>
+          <tr><th rowspan="2">계</th><th colspan="2">관제요원</th><th rowspan="2">유지보수</th></tr>
+          <tr><th>공무원</th><th>경찰관</th></tr>
+          <tr><td>18명</td><td>16명</td><td>1명</td><td>1명</td></tr>
+        </tbody>
+      </table>
+      <p class="monthlyNote">24시간 근무 : 시간선택제임기제 공무원(4조 3교대, 1조 4명)<br>삼산경찰서 경찰관(1명, 주간근무 09:00~18:00)</p>
 
-      <h2>Ⅱ CCTV 관제대응 실적</h2>
-      <table class="reportTable">
-        <thead><tr><th>구분</th>${realtimeCategories.map((c) => `<th>${escapeHtml(c)}</th>`).join("")}<th>비상벨 대응</th><th>비상벨 계도</th><th>비상벨 기타</th><th>전화민원</th><th>정보공개</th><th>경찰관제요청</th><th>영상열람반출</th></tr></thead>
-        <tbody><tr><th>계</th>${rt.map((v) => `<td>${v}</td>`).join("")}<td>${civil.bellResponse}</td><td>${civil.bellGuide}</td><td>${civil.bellEtc}</td><td>${civil.phone}</td><td>${civil.info}</td><td>${sum(police)}</td><td>${videoView + videoCopy}</td></tr></tbody>
+      <div class="monthlySectionTitle"><span>Ⅱ</span><strong>CCTV 관제대응 실적</strong></div>
+      <h2 class="monthlySubTitle">□ 근무자 대응 현황 <em>(단위 : 건)</em></h2>
+      ${buildMonthlyWorkerTable(key, totalRow)}
+
+      <h2 class="monthlySubTitle">□ CCTV 관제 상세내용 <em>(단위 : 건)</em></h2>
+      <table class="reportTable monthlyDetailTable">
+        <tbody>
+          <tr><th>구 분</th><th>상세내용</th><th>계</th></tr>
+          <tr><th>총 계</th><td></td><td>${responseTotal}</td></tr>
+          <tr><th>강력범죄</th><td>강도( 0건), 폭력( ${rt[0]}건), 절도( 0건), 성추행( 0건), 기타( 0건)</td><td>${rt[0]}</td></tr>
+          <tr><th>경범죄</th><td>주거침입( 0건), 쓰레기투기( 0건), 음주소란( 0건), 기타( ${rt[1]}건)</td><td>${rt[1]}</td></tr>
+          <tr><th>청소년 비위</th><td>청소년 선도( ${rt[2]}건), 비행( 0건)</td><td>${rt[2]}</td></tr>
+          <tr><th>재난 / 화재</th><td>재난( ${rt[3]}건), 화재( 0건), 방화( 0건)</td><td>${rt[3]}</td></tr>
+          <tr><th>교통사고 등<br>안전대응</th><td>교통사고( ${rt[4]}건), 도주차량( 0건), 기타( 0건)</td><td>${rt[4]}</td></tr>
+          <tr><th>기타사항</th><td>실종( 0건), 사건사고방지( ${rt[5]}건)</td><td>${rt[5]}</td></tr>
+          <tr><th>민원응대</th><td>비상벨 대응( ${civil.bellResponse}건), 비상벨 계도( ${civil.bellGuide}건), 비상벨 기타( ${civil.bellEtc}건)<br>전화 민원( ${civil.phone}건), 정보공개청구( ${civil.info}건)<br>안심in 서비스 긴급도움 접수( 0건)</td><td>${civil.bellResponse + civil.bellGuide + civil.bellEtc + civil.phone + civil.info}</td></tr>
+        </tbody>
       </table>
 
-      <h2>□ CCTV 관제요청 현황 [경찰서 → 관제센터]</h2>
-      <table class="reportTable"><thead><tr><th>합계</th>${policeCategories.map((c) => `<th>${escapeHtml(c)}</th>`).join("")}</tr></thead><tbody><tr><td>${sum(police)}</td>${police.map((v) => `<td>${v}</td>`).join("")}</tr></tbody></table>
+      <h2 class="monthlySubTitle">□ 사회복무요원 근무</h2>
+      <table class="reportTable monthlyServiceTable"><tbody><tr><th>현 황</th><th>근무 내용</th><th>비 고</th></tr><tr><td>·기존 사회복무요원 26.1.3.자 소집해제</td><td></td><td>·신규 사회복무요원 배치 미정</td></tr></tbody></table>
 
-      <h2>□ CCTV 영상자료 열람·제공</h2>
-      <table class="reportTable"><tbody><tr><th>구분</th><th>계</th><th>비고</th></tr><tr><th>열람</th><td>${videoView}</td><td></td></tr><tr><th>제공</th><td>${videoCopy}</td><td>복제</td></tr><tr><th>합계</th><td>${videoView + videoCopy}</td><td></td></tr></tbody></table>
+      <h2 class="monthlySubTitle">□ CCTV 관제요청 현황 [경찰서 → 관제센터] <em>(단위 : 건)</em></h2>
+      <table class="reportTable monthlySimpleTable"><thead><tr><th>합 계</th><th>강력범죄</th><th>경범죄</th><th>청소년 비위</th><th>재난/화재</th><th>교통사고 등<br>안전대응</th><th>실종 및<br>요구조자</th><th>기타</th></tr></thead><tbody><tr><td>${sum(police)}</td>${police.map((v) => `<td>${v}</td>`).join("")}</tr></tbody></table>
 
-      <h2>□ 열람·제공 CCTV 영상자료 활용 현황</h2>
-      <table class="reportTable"><thead><tr><th>합계</th>${videoCategories.map((c) => `<th>${escapeHtml(c)}</th>`).join("")}</tr></thead><tbody><tr><td>${sum(video)}</td>${video.map((v) => `<td>${v}</td>`).join("")}</tr></tbody></table>
+      <h2 class="monthlySubTitle">□ CCTV 영상자료 열람·제공 [관제센터 → 요청기관 및 부서] <em>(단위 : 건)</em></h2>
+      <table class="reportTable monthlySimpleTable"><tbody><tr><th>구 분</th><th>계</th><th>경찰서</th><th>자원순환과</th><th>동행정복지센터</th><th>타기관(통계)</th><th>기타(법원 등)</th></tr><tr><th>열 람</th><td>${videoView}</td><td>${videoView}</td><td>0</td><td>0</td><td>0</td><td>0</td></tr><tr><th>제 공</th><td>${videoCopy}</td><td>${videoCopy}</td><td>0</td><td>0</td><td>0</td><td>0</td></tr><tr><th>합 계</th><td>${videoView + videoCopy}</td><td>${videoView + videoCopy}</td><td>0</td><td>0</td><td>0</td><td>0</td></tr></tbody></table>
 
-      <h2>Ⅲ 주요 특이사항</h2>
-      <table class="reportTable reportSpecialTable"><tbody>${mainSpecials.length ? mainSpecials.map((item) => `<tr><th>${escapeHtml(settings.activeTeam || "")}<br>${escapeHtml(formatKoreanDate(item.date))}<br>${escapeHtml(getShift(parseDateOnly(item.date)))}</th><td>${reportPoliceLine(item)}</td></tr>`).join("") : `<tr><td>기록 없음</td></tr>`}</tbody></table>
+      <h2 class="monthlySubTitle">□ 열람·제공 CCTV 영상자료 활용 현황 <em>(단위 : 건)</em></h2>
+      <table class="reportTable monthlySimpleTable"><thead><tr><th>합계</th>${videoCategories.map((c) => `<th>${escapeHtml(c)}</th>`).join("")}</tr></thead><tbody><tr><td>${sum(video)}</td>${video.map((v) => `<td>${v}</td>`).join("")}</tr></tbody></table>
 
-      <h2>Ⅳ 비상벨, 안심in</h2>
-      <table class="reportTable reportSpecialTable"><tbody>${bellSpecials.length ? bellSpecials.map((item) => `<tr><th>${escapeHtml(settings.activeTeam || "")}<br>${escapeHtml(formatKoreanDate(item.date))}<br>${escapeHtml(getShift(parseDateOnly(item.date)))}</th><td>${reportCivilLine(item)}</td></tr>`).join("") : `<tr><td>기록 없음</td></tr>`}</tbody></table>
+      <h2 class="monthlyRomanTitle">Ⅲ 주요 특이사항</h2>
+      ${buildMonthlySpecialTable(mainSpecials, "police")}
+
+      <h2 class="monthlyRomanTitle">Ⅳ 비상벨, 안심in</h2>
+      ${buildMonthlySpecialTable(bellSpecials, "civil")}
     </article>
   `;
 }
+
+
+function getTeamMembersForReport(team) {
+  const saved = settings.teams?.[team] || [];
+  return [0, 1, 2, 3].map((idx) => saved[idx] || "");
+}
+
+function recordBelongsToMember(item, member) {
+  if (!member) return false;
+  return (item.user || getUserName()) === member;
+}
+
+function countMemberRecords(key, member) {
+  const rt = realtimeCategories.map((category) => countBy(realtimeRecords, (r) => r.date.startsWith(key) && recordBelongsToMember(r, member) && r.category === category));
+  const bellResponse = countBy(civilRecords, (r) => r.date.startsWith(key) && recordBelongsToMember(r, member) && r.type === "비상벨대응");
+  const bellGuide = countBy(civilRecords, (r) => r.date.startsWith(key) && recordBelongsToMember(r, member) && r.type === "비상벨계도");
+  const bellEtc = countBy(civilRecords, (r) => r.date.startsWith(key) && recordBelongsToMember(r, member) && r.type === "비상벨기타");
+  const phone = countBy(civilRecords, (r) => r.date.startsWith(key) && recordBelongsToMember(r, member) && r.type === "전화민원");
+  const info = countBy(infoRecords, (r) => r.date.startsWith(key) && recordBelongsToMember(r, member));
+  const police = countBy(policeRecords, (r) => r.date.startsWith(key) && recordBelongsToMember(r, member));
+  const video = countBy(videoRecords, (r) => r.date.startsWith(key) && recordBelongsToMember(r, member));
+  return [...rt, bellResponse, bellGuide, bellEtc, phone, info, police, video];
+}
+
+function buildMonthlyWorkerTable(key, totalRow) {
+  const teams = ["1조", "2조", "3조", "4조"];
+  return `
+    <table class="reportTable monthlyWorkerTable">
+      <thead>
+        <tr>
+          <th rowspan="3">구분</th>
+          <th rowspan="3">성명</th>
+          <th colspan="6">실시간 사건·사고 신고</th>
+          <th colspan="5">민원처리</th>
+          <th colspan="2">업무협조</th>
+        </tr>
+        <tr>
+          <th rowspan="2">강력<br>범죄</th><th rowspan="2">경범<br>죄</th><th rowspan="2">청소년<br>비위</th><th rowspan="2">재난/<br>화재</th><th rowspan="2">교통<br>안전대응</th><th rowspan="2">기타<br>사항</th>
+          <th colspan="3">비상벨</th><th rowspan="2">전화<br>민원</th><th rowspan="2">정보<br>공개<br>청구</th>
+          <th rowspan="2">경찰<br>관제<br>요청</th><th rowspan="2">영상<br>열람<br>반출</th>
+        </tr>
+        <tr><th>대응</th><th>계도</th><th>기타</th></tr>
+      </thead>
+      <tbody>
+        <tr class="reportTotalRow"><th colspan="2">계</th>${totalRow.map((v) => `<td>${v || ""}</td>`).join("")}</tr>
+        ${teams.map((team) => {
+          const members = getTeamMembersForReport(team);
+          return members.map((member, idx) => {
+            const values = countMemberRecords(key, member);
+            return `<tr>${idx === 0 ? `<th rowspan="4">${team}</th>` : ""}<th>${escapeHtml(member)}</th>${values.map((v) => `<td>${v || ""}</td>`).join("")}</tr>`;
+          }).join("");
+        }).join("")}
+      </tbody>
+    </table>
+  `;
+}
+
+function buildMonthlySpecialTable(items, kind) {
+  if (!items.length) {
+    return `<table class="reportTable monthlySpecialOutput"><tbody><tr><th>일 시</th><th>주 요 내 용</th></tr><tr><td colspan="2">기록 없음</td></tr></tbody></table>`;
+  }
+
+  return `
+    <table class="reportTable monthlySpecialOutput">
+      <tbody>
+        <tr><th>일 시</th><th>주 요 내 용</th></tr>
+        ${items.map((item) => {
+          const title = kind === "civil" ? reportCivilLine(item) : reportPoliceLine(item);
+          return `<tr><td>${escapeHtml(settings.activeTeam || "")}<br>${escapeHtml(formatKoreanDate(item.date))}<br>${escapeHtml(getShift(parseDateOnly(item.date)))}</td><td>${title}</td></tr>`;
+        }).join("")}
+      </tbody>
+    </table>
+  `;
+}
+
 
 function reportLines(lines) {
   return lines.length ? lines.map((line) => `<p>${line}</p>`).join("") : "";
