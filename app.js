@@ -1,4 +1,4 @@
-const APP_VERSION = "0.7.8";
+const APP_VERSION = "0.7.9";
 const KAKAO_EXTERNAL_MAP_URL = "https://map.kakao.com/";
 const DEFAULT_MAP_CENTER = { lat: 37.5070, lng: 126.7218 };
 const DEFAULT_MAP_LABEL = "부평구청";
@@ -30,11 +30,23 @@ const DEFAULT_SETTINGS = {
   baseDate: "2026-04-01",
   baseShift: "비번",
   shiftPattern: ["비번", "휴무", "오전", "오전", "오후", "오후", "야간", "야간"],
+  areaBaseMonth: "2026-05",
+  areaBaseArea: "A",
+  areaPattern: ["A", "C", "D", "B"],
 };
 
-const realtimeCategories = ["강력", "경범죄", "청소년", "재난", "교통사고", "기타"];
+const incidentCategoryGroups = {
+  "강력": ["강도", "폭력", "절도", "성추행", "기타"],
+  "경범죄": ["주거침입", "쓰레기투기", "음주소란", "기타"],
+  "청소년비위": ["청소년선도", "비행"],
+  "재난/화재": ["재난", "화재", "방화"],
+  "교통사고등안전대응": ["교통사고", "도주차량", "기타"],
+  "기타대응": ["실종", "사건사고방지"],
+};
+
+const realtimeCategories = Object.keys(incidentCategoryGroups);
 const civilTypes = ["비상벨대응", "비상벨기타", "비상벨계도", "민원-나", "민원-대리", "정보공개"];
-const policeCategories = ["강력", "경범죄", "청소년", "재난", "실종", "교통사고", "기타"];
+const policeCategories = Object.keys(incidentCategoryGroups);
 const videoCategories = ["강도", "폭력", "절도", "성추행", "실종", "교통사고", "기타"];
 
 let settings = mergeSettings(readJson(SETTINGS_KEY, readJson("cctv_settings_v3", readJson("cctv_settings_v2", {}))));
@@ -127,6 +139,13 @@ function mergeSettings(source) {
   next.teamName = next.activeTeam;
   next.members = next.teams[next.activeTeam] || [];
 
+  if (!Array.isArray(next.areaPattern) || !next.areaPattern.length) {
+    next.areaPattern = [...DEFAULT_SETTINGS.areaPattern];
+  }
+
+  if (!next.areaBaseMonth) next.areaBaseMonth = DEFAULT_SETTINGS.areaBaseMonth;
+  if (!next.areaBaseArea) next.areaBaseArea = DEFAULT_SETTINGS.areaBaseArea;
+
   if (!next.theme) next.theme = "ios-blue";
 
   if (!next.currentUser || !next.members.includes(next.currentUser)) {
@@ -194,6 +213,27 @@ function getShift(date) {
   const baseIndex = Math.max(0, pattern.indexOf(settings.baseShift));
   const index = ((baseIndex + diff) % pattern.length + pattern.length) % pattern.length;
   return pattern[index];
+}
+
+
+function getWorkArea(date = new Date()) {
+  const pattern = settings.areaPattern?.length ? settings.areaPattern : DEFAULT_SETTINGS.areaPattern;
+  const baseMonth = settings.areaBaseMonth || DEFAULT_SETTINGS.areaBaseMonth;
+  const baseArea = settings.areaBaseArea || DEFAULT_SETTINGS.areaBaseArea;
+
+  const [baseYear, baseMonthNo] = baseMonth.split("-").map(Number);
+  const baseIndex = Math.max(0, pattern.indexOf(baseArea));
+  const targetMonthIndex = date.getFullYear() * 12 + date.getMonth();
+  const baseMonthIndex = baseYear * 12 + (baseMonthNo - 1);
+  const diff = targetMonthIndex - baseMonthIndex;
+  const index = ((baseIndex + diff) % pattern.length + pattern.length) % pattern.length;
+
+  return pattern[index] || baseArea || "A";
+}
+
+function getWorkAreaLabel(date = new Date()) {
+  const area = getWorkArea(date);
+  return area ? `${area}구역` : "";
 }
 
 function setShiftClass(shift) {
@@ -601,6 +641,8 @@ function closeManageDetails() {
 
 function bindDynamicForms() {
   $("rtAgency").addEventListener("change", updateRealtimeAgencyFields);
+  $("rtCategory").addEventListener("change", () => updateIncidentDetailOptions("rtCategory", "rtDetailCategory"));
+  $("policeCategory").addEventListener("change", () => updateIncidentDetailOptions("policeCategory", "policeDetailCategory"));
   $("civilType").addEventListener("change", updateCivilFields);
   $("civilPhoneOwner").addEventListener("change", updateCivilFields);
   $("policeAgency").addEventListener("change", updatePoliceAgencyFields);
@@ -719,6 +761,8 @@ function bindBackup() {
 function bindSettings() {
   $("saveShiftSettingBtn").addEventListener("click", saveShiftSettings);
   $("resetShiftSettingBtn").addEventListener("click", resetShiftSettings);
+  $("saveAreaSettingBtn").addEventListener("click", saveAreaSettings);
+  $("resetAreaSettingBtn").addEventListener("click", resetAreaSettings);
   $("saveTeamSettingBtn").addEventListener("click", saveTeamSettings);
   $("saveThemeSettingBtn").addEventListener("click", saveThemeSettings);
 
@@ -757,7 +801,8 @@ function renderHeader() {
   $("headerDateText").textContent = formatHeaderDate();
   $("headerShiftBadge").textContent = shift;
   $("headerTeamName").textContent = settings.activeTeam || settings.teamName || "1조";
-  $("headerUserName").textContent = user;
+  const areaLabel = getWorkAreaLabel(workDate);
+  $("headerUserName").textContent = areaLabel ? `${user}(${areaLabel})` : user;
   $("versionText").textContent = `현재버전 ${APP_VERSION}`;
 
   setShiftClass(shift);
@@ -767,6 +812,9 @@ function renderSettings() {
   $("settingBaseDate").value = settings.baseDate;
   $("settingBaseShift").value = settings.baseShift;
   $("settingShiftPattern").value = settings.shiftPattern.join(",");
+  $("settingAreaBaseMonth").value = settings.areaBaseMonth || "2026-05";
+  $("settingAreaBaseArea").value = settings.areaBaseArea || "A";
+  $("settingAreaPattern").value = (settings.areaPattern || ["A", "C", "D", "B"]).join(",");
 
   $("activeTeamSelect").value = settings.activeTeam;
   $("editTeamSelect").value = $("editTeamSelect").value || settings.activeTeam;
@@ -851,8 +899,10 @@ function renderHomeSummary() {
 }
 
 function renderRealtimeSummary(tableId, today, ym) {
-  const todayValues = realtimeCategories.map((c) => realtimeRecords.filter((r) => r.date === today && r.category === c).length);
-  const monthValues = realtimeCategories.map((c) => realtimeRecords.filter((r) => r.date.startsWith(ym) && r.category === c).length);
+  const todayRecords = realtimeRecords.filter((r) => r.date === today);
+  const monthRecords = realtimeRecords.filter((r) => r.date.startsWith(ym));
+  const todayValues = realtimeCategories.map((c) => countIncidentByMajor(todayRecords, c));
+  const monthValues = realtimeCategories.map((c) => countIncidentByMajor(monthRecords, c));
   renderMatrixTable(tableId, realtimeCategories, [["오늘", ...todayValues, sum(todayValues)]], { hideLabelColumn: true, cellListKey: "homeRealtime" });
   setMonthHint("realtimeMonthHint", `이번달 누계 <strong>${sum(monthValues)}</strong>건`);
 }
@@ -866,8 +916,10 @@ function renderCivilSummary(tableId, today, ym) {
 }
 
 function renderPoliceSummary(tableId, today, ym) {
-  const todayValues = policeCategories.map((c) => policeRecords.filter((r) => r.date === today && r.category === c).length);
-  const monthValues = policeCategories.map((c) => policeRecords.filter((r) => r.date.startsWith(ym) && r.category === c).length);
+  const todayRecords = policeRecords.filter((r) => r.date === today);
+  const monthRecords = policeRecords.filter((r) => r.date.startsWith(ym));
+  const todayValues = policeCategories.map((c) => countIncidentByMajor(todayRecords, c));
+  const monthValues = policeCategories.map((c) => countIncidentByMajor(monthRecords, c));
   renderMatrixTable(tableId, policeCategories, [["오늘", ...todayValues, sum(todayValues)]], { hideLabelColumn: true, cellListKey: "homePolice" });
   setMonthHint("policeMonthHint", `이번달 누계 <strong>${sum(monthValues)}</strong>건`);
 }
@@ -936,11 +988,11 @@ function formatVideoCountInline(list) {
 function renderHomeDetails() {
   const today = todayString();
 
-  renderTable("realtimeTodayTable", ["번호", "신고/출동/종료", "기관", "관리번호", "위치", "구분", "내용", "조치사항"],
-    realtimeRecords.filter((r) => r.date === today).map((r, idx) => [idx + 1, `${r.startTime || "-"} / ${r.dispatchTime || "-"} / ${r.endTime || "-"}`, r.agency || "", r.manageNo, r.location, r.category, r.content, r.note]), [0]);
+  renderTable("realtimeTodayTable", ["번호", "신고/출동/종료", "기관", "관리번호", "위치", "구분", "세부", "내용", "조치사항"],
+    realtimeRecords.filter((r) => r.date === today).map((r, idx) => [idx + 1, `${r.startTime || "-"} / ${r.dispatchTime || "-"} / ${r.endTime || "-"}`, r.agency || "", r.manageNo, r.location, normalizeIncidentCategory(r.category), getIncidentDetail(r), r.content, r.note]), [0]);
 
-  renderTable("policeTodayTable", ["번호", "시간", "구분", "요청기관", "관리번호", "주소/위치", "내용", "조치사항"],
-    policeRecords.filter((r) => r.date === today).map((r, idx) => [idx + 1, r.time, r.category, r.agency, r.manageNo, r.location, r.content, r.action]), [0]);
+  renderTable("policeTodayTable", ["번호", "시간", "구분", "세부", "요청기관", "관리번호", "주소/위치", "내용", "조치사항"],
+    policeRecords.filter((r) => r.date === today).map((r, idx) => [idx + 1, r.time, normalizeIncidentCategory(r.category), getIncidentDetail(r), r.agency, r.manageNo, r.location, r.content, r.action]), [0]);
 
   renderTable("civilTodayTable", ["번호", "시간", "민원종류", "민원인정보", "연락처", "관리번호", "위치", "민원내용", "조치사항"],
     civilRecords.filter((r) => r.date === today).map((r, idx) => [idx + 1, r.time, civilTitle(r), r.complainantInfo, r.complainantPhone, r.manageNo, r.location, r.content, r.action]), [0]);
@@ -1211,9 +1263,9 @@ function renderRecordList(refs) {
 
 function recordTitle(type, item, prefix = "") {
   const label = prefix ? `${prefix} · ` : "";
-  if (type === "realtime") return `${label}${item.date || ""} ${item.startTime || ""} ${item.category || ""}`;
+  if (type === "realtime") return `${label}${item.date || ""} ${item.startTime || ""} ${normalizeIncidentCategory(item.category)} ${getIncidentDetail(item)}`;
   if (type === "civil") return `${label}${item.date || ""} ${item.time || ""} ${civilTitle(item)}`;
-  if (type === "police") return `${label}${item.date || ""} ${item.time || ""} ${item.category || ""}`;
+  if (type === "police") return `${label}${item.date || ""} ${item.time || ""} ${normalizeIncidentCategory(item.category)} ${getIncidentDetail(item)}`;
   if (type === "video") return `${label}${item.date || ""} ${item.time || ""} ${item.process || ""} · ${item.category || ""}`;
   if (type === "info") return `${label}${item.date || ""} 정보공개 ${item.receiptNo || ""}`;
   return `${label}${item.date || ""}`;
@@ -1255,7 +1307,8 @@ function openInputModal(type, record = null) {
     setRealtimeAgencyValue(record?.agency || "부평상황실");
     $("rtManageNo").value = record?.manageNo || "";
     $("rtLocation").value = record?.location || "";
-    $("rtCategory").value = record?.category || "강력";
+    $("rtCategory").value = normalizeIncidentCategory(record?.category || "강력");
+    updateIncidentDetailOptions("rtCategory", "rtDetailCategory", record?.detailCategory || getIncidentDetail(record || { category: "강력" }));
     $("rtContent").value = record?.content || "";
     $("rtNote").value = record?.note || "";
     $("rtPersonalSpecial").checked = false;
@@ -1283,7 +1336,8 @@ function openInputModal(type, record = null) {
     $("formPolice").classList.add("active");
     $("policeDate").value = record?.date || today;
     $("policeTime").value = record?.time || now;
-    $("policeCategory").value = record?.category || "강력";
+    $("policeCategory").value = normalizeIncidentCategory(record?.category || "강력");
+    updateIncidentDetailOptions("policeCategory", "policeDetailCategory", record?.detailCategory || getIncidentDetail(record || { category: "강력" }));
     setPoliceAgencyValue(record?.agency || "부평상황실");
     $("policeManageNo").value = record?.manageNo || "";
     $("policeLocation").value = record?.location || "";
@@ -1512,6 +1566,7 @@ function saveRealtimeRecord(e) {
     manageNo: $("rtManageNo").value.trim(),
     location: $("rtLocation").value.trim(),
     category: $("rtCategory").value,
+    detailCategory: $("rtDetailCategory").value,
     content: $("rtContent").value.trim(),
     note: $("rtNote").value.trim(),
     createdAt: new Date().toISOString(),
@@ -1558,6 +1613,7 @@ function savePoliceRecord(e) {
     date: $("policeDate").value || todayString(),
     time: $("policeTime").value || timeString(),
     category: $("policeCategory").value,
+    detailCategory: $("policeDetailCategory").value,
     agency: $("policeAgency").value === "직접입력" ? $("policeAgencyDirect").value.trim() : $("policeAgency").value,
     manageNo: $("policeManageNo").value.trim(),
     location: $("policeLocation").value.trim(),
@@ -1680,6 +1736,36 @@ function saveShiftSettings() {
   saveAll();
   renderAll();
   alert("근무패턴이 저장되었습니다.");
+}
+
+
+function saveAreaSettings() {
+  const baseMonth = $("settingAreaBaseMonth").value;
+  const baseArea = $("settingAreaBaseArea").value;
+  const pattern = parseListText($("settingAreaPattern").value).map((item) => item.toUpperCase());
+  const allowed = ["A", "B", "C", "D"];
+  const invalid = pattern.filter((item) => !allowed.includes(item));
+
+  if (!baseMonth) return alert("기준 월을 선택해주세요.");
+  if (!pattern.length) return alert("구역 순서를 입력해주세요.");
+  if (invalid.length) return alert(`사용할 수 없는 구역이 있습니다: ${invalid.join(", ")}`);
+  if (!pattern.includes(baseArea)) return alert("구역 순서 안에 기준 월 구역이 포함되어야 합니다.");
+
+  settings.areaBaseMonth = baseMonth;
+  settings.areaBaseArea = baseArea;
+  settings.areaPattern = pattern;
+  saveAll();
+  renderAll();
+  alert("근무구역 패턴이 저장되었습니다.");
+}
+
+function resetAreaSettings() {
+  settings.areaBaseMonth = DEFAULT_SETTINGS.areaBaseMonth;
+  settings.areaBaseArea = DEFAULT_SETTINGS.areaBaseArea;
+  settings.areaPattern = [...DEFAULT_SETTINGS.areaPattern];
+  saveAll();
+  renderAll();
+  alert("근무구역 패턴이 초기화되었습니다.");
 }
 
 function resetShiftSettings() {
@@ -1851,6 +1937,64 @@ function countBy(list, predicate) {
   return list.filter(predicate).length;
 }
 
+
+function normalizeIncidentCategory(category) {
+  const map = {
+    "강력범죄": "강력",
+    "강력": "강력",
+    "경범": "경범죄",
+    "경범죄": "경범죄",
+    "청소년": "청소년비위",
+    "청소년비위": "청소년비위",
+    "재난": "재난/화재",
+    "재난화재": "재난/화재",
+    "재난/화재": "재난/화재",
+    "교통": "교통사고등안전대응",
+    "교통사고": "교통사고등안전대응",
+    "교통안전대응": "교통사고등안전대응",
+    "교통사고등안전대응": "교통사고등안전대응",
+    "실종": "기타대응",
+    "기타": "기타대응",
+    "기타대응": "기타대응",
+  };
+
+  return map[category] || category || "기타대응";
+}
+
+function getIncidentDetail(item) {
+  if (item?.detailCategory) return item.detailCategory;
+
+  const category = normalizeIncidentCategory(item?.category);
+  const details = incidentCategoryGroups[category] || [];
+
+  if (details.includes(item?.category)) return item.category;
+  if (category === "기타대응" && item?.category === "실종") return "실종";
+  if (category === "교통사고등안전대응" && item?.category === "교통사고") return "교통사고";
+
+  return details[details.length - 1] || "";
+}
+
+function countIncidentByMajor(list, major) {
+  return countBy(list, (r) => normalizeIncidentCategory(r.category) === major);
+}
+
+function countIncidentByDetail(list, major, detail) {
+  return countBy(list, (r) => normalizeIncidentCategory(r.category) === major && getIncidentDetail(r) === detail);
+}
+
+function updateIncidentDetailOptions(categoryId, detailId, selected = "") {
+  const categoryEl = $(categoryId);
+  const detailEl = $(detailId);
+
+  if (!categoryEl || !detailEl) return;
+
+  const category = normalizeIncidentCategory(categoryEl.value);
+  const details = incidentCategoryGroups[category] || [];
+
+  detailEl.innerHTML = details.map((detail) => `<option value="${escapeHtml(detail)}">${escapeHtml(detail)}</option>`).join("");
+  detailEl.value = details.includes(selected) ? selected : (details[0] || "");
+}
+
 function dailyCountSet(date) {
   const ym = getMonthlyKeyFromDate(date);
   const dayRealtime = realtimeRecords.filter((r) => r.date === date);
@@ -1866,8 +2010,8 @@ function dailyCountSet(date) {
 
   const realtime = realtimeCategories.map((category) => ({
     category,
-    today: countBy(dayRealtime, (r) => r.category === category),
-    month: countBy(monthRealtime, (r) => r.category === category),
+    today: countIncidentByMajor(dayRealtime, category),
+    month: countIncidentByMajor(monthRealtime, category),
   }));
 
   const civil = [
@@ -1913,7 +2057,7 @@ function getDailyLogRows(date) {
     time: [r.startTime, r.dispatchTime, r.endTime].filter(Boolean).join(" / "),
     manageNo: r.manageNo,
     location: r.location,
-    category: r.category,
+    category: `${normalizeIncidentCategory(r.category)} / ${getIncidentDetail(r)}`,
     content: r.content,
     result: r.note,
   }));
@@ -1949,12 +2093,12 @@ function buildDailyReport(date) {
   const monthInfo = infoRecords.filter((r) => r.date.startsWith(monthKey));
 
   const dailyCols = [
-    { label: "강력<br>범죄", day: countBy(dayRealtime, (r) => r.category === "강력"), month: countBy(monthRealtime, (r) => r.category === "강력") },
-    { label: "경범죄", day: countBy(dayRealtime, (r) => r.category === "경범죄"), month: countBy(monthRealtime, (r) => r.category === "경범죄") },
-    { label: "청소년<br>비위", day: countBy(dayRealtime, (r) => r.category === "청소년"), month: countBy(monthRealtime, (r) => r.category === "청소년") },
-    { label: "재난/<br>화재", day: countBy(dayRealtime, (r) => r.category === "재난"), month: countBy(monthRealtime, (r) => r.category === "재난") },
-    { label: "교통사고<br>안전대응", day: countBy(dayRealtime, (r) => r.category === "교통사고"), month: countBy(monthRealtime, (r) => r.category === "교통사고") },
-    { label: "기타<br>사항", day: countBy(dayRealtime, (r) => r.category === "기타"), month: countBy(monthRealtime, (r) => r.category === "기타") },
+    { label: "강력<br>범죄", day: countIncidentByMajor(dayRealtime, "강력"), month: countIncidentByMajor(monthRealtime, "강력") },
+    { label: "경범죄", day: countIncidentByMajor(dayRealtime, "경범죄"), month: countIncidentByMajor(monthRealtime, "경범죄") },
+    { label: "청소년<br>비위", day: countIncidentByMajor(dayRealtime, "청소년비위"), month: countIncidentByMajor(monthRealtime, "청소년비위") },
+    { label: "재난/<br>화재", day: countIncidentByMajor(dayRealtime, "재난/화재"), month: countIncidentByMajor(monthRealtime, "재난/화재") },
+    { label: "교통사고<br>안전대응", day: countIncidentByMajor(dayRealtime, "교통사고등안전대응"), month: countIncidentByMajor(monthRealtime, "교통사고등안전대응") },
+    { label: "기타<br>사항", day: countIncidentByMajor(dayRealtime, "기타대응"), month: countIncidentByMajor(monthRealtime, "기타대응") },
     { label: "대응", day: countBy(dayCivil, (r) => r.type === "비상벨대응"), month: countBy(monthCivil, (r) => r.type === "비상벨대응") },
     { label: "기타", day: countBy(dayCivil, (r) => r.type === "비상벨기타"), month: countBy(monthCivil, (r) => r.type === "비상벨기타") },
     { label: "계도", day: countBy(dayCivil, (r) => r.type === "비상벨계도"), month: countBy(monthCivil, (r) => r.type === "비상벨계도") },
@@ -1962,8 +2106,6 @@ function buildDailyReport(date) {
     { label: "경찰<br>관제<br>요청", day: dayPolice.length, month: monthPolice.length },
     { label: "영상<br>열람<br>반출", day: dayVideo.length, month: monthVideo.length },
   ];
-  const dayTotal = sum(dailyCols.map((item) => item.day));
-  const monthTotal = sum(dailyCols.map((item) => item.month));
 
   const specialPolice = dayPolice;
   const phoneCivil = dayCivil.filter((r) => r.type === "전화민원");
@@ -1973,7 +2115,7 @@ function buildDailyReport(date) {
   return `
     <article class="reportDoc dailyReport reportPaper">
       <h1 class="dailyTitle">CCTV 관제 근무일지(${escapeHtml(formatReportDateTitle(date))})</h1>
-      <p class="reportWorker dailyWorker">■ 근무자 : ${escapeHtml(getUserName())} (${escapeHtml(settings.activeTeam || "1조")})</p>
+      <p class="reportWorker dailyWorker">■ 근무자 : ${escapeHtml(getUserName())} (${escapeHtml(settings.activeTeam || "1조")} / ${escapeHtml(getWorkAreaLabel(parseDateOnly(date)))})</p>
 
       <h2 class="dailySection">■ CCTV 관제 대응 실적</h2>
       <table class="dailyStatsTable reportTable">
@@ -1998,12 +2140,12 @@ function buildDailyReport(date) {
           <tr><th>대응</th><th>기타</th><th>계도</th></tr>
         </thead>
         <tbody>
-          <tr><th>금일건수</th>${dailyCols.map((item) => `<td>${item.day}</td>`).join("")}<td class="dailyTotalValue">${dayTotal}</td></tr>
-          <tr><th>월 누계</th>${dailyCols.map((item) => `<td>${item.month}</td>`).join("")}<td class="dailyTotalValue">${monthTotal}</td></tr>
+          <tr><th>금일건수</th>${dailyCols.map((item) => `<td>${item.day}</td>`).join("")}</tr>
+          <tr><th>월 누계</th>${dailyCols.map((item) => `<td>${item.month}</td>`).join("")}</tr>
         </tbody>
       </table>
 
-      <h2 class="dailySection">■ CCTV 관제일지(모니터링 : &nbsp;&nbsp;&nbsp; 구역)</h2>
+      <h2 class="dailySection">■ CCTV 관제일지(모니터링 : ${escapeHtml(getWorkAreaLabel(parseDateOnly(date)))})</h2>
       <table class="dailyLogTable reportTable">
         <thead>
           <tr><th class="dailyNoHead"></th><th>시간</th><th>CCTV<br>관리번호</th><th>위치</th><th>구분</th><th>관제내용</th><th>결과</th></tr>
@@ -2028,10 +2170,16 @@ function buildDailyReport(date) {
     </article>
   `;
 }
+function formatDetailCounts(list, major) {
+  const details = incidentCategoryGroups[major] || [];
+  return details.map((detail) => `${escapeHtml(detail)}( ${countIncidentByDetail(list, major, detail)}건)`).join(", ");
+}
 
 function buildMonthlyReport(key) {
   const title = key.length === 4 ? `${key}년` : `${Number(key.slice(0, 4))}년 ${Number(key.slice(5, 7))}월`;
-  const rt = realtimeCategories.map((category) => countBy(realtimeRecords, (r) => r.date.startsWith(key) && r.category === category));
+  const periodRealtime = realtimeRecords.filter((r) => r.date.startsWith(key));
+  const periodPolice = policeRecords.filter((r) => r.date.startsWith(key));
+  const rt = realtimeCategories.map((category) => countIncidentByMajor(periodRealtime, category));
   const civil = {
     bellResponse: countBy(civilRecords, (r) => r.date.startsWith(key) && r.type === "비상벨대응"),
     bellGuide: countBy(civilRecords, (r) => r.date.startsWith(key) && r.type === "비상벨계도"),
@@ -2039,7 +2187,7 @@ function buildMonthlyReport(key) {
     phone: countBy(civilRecords, (r) => r.date.startsWith(key) && r.type === "전화민원"),
     info: countBy(infoRecords, (r) => r.date.startsWith(key)),
   };
-  const police = policeCategories.map((category) => countBy(policeRecords, (r) => r.date.startsWith(key) && r.category === category));
+  const police = policeCategories.map((category) => countIncidentByMajor(periodPolice, category));
   const video = videoCategories.map((category) => countBy(videoRecords, (r) => r.date.startsWith(key) && r.category === category));
   const videoView = countBy(videoRecords, (r) => r.date.startsWith(key) && r.process === "열람");
   const videoCopy = countBy(videoRecords, (r) => r.date.startsWith(key) && r.process === "복제");
@@ -2082,12 +2230,12 @@ function buildMonthlyReport(key) {
         <tbody>
           <tr><th>구 분</th><th>상세내용</th><th>계</th></tr>
           <tr><th>총 계</th><td></td><td>${responseTotal}</td></tr>
-          <tr><th>강력범죄</th><td>강도( 0건), 폭력( ${rt[0]}건), 절도( 0건), 성추행( 0건), 기타( 0건)</td><td>${rt[0]}</td></tr>
-          <tr><th>경범죄</th><td>주거침입( 0건), 쓰레기투기( 0건), 음주소란( 0건), 기타( ${rt[1]}건)</td><td>${rt[1]}</td></tr>
-          <tr><th>청소년 비위</th><td>청소년 선도( ${rt[2]}건), 비행( 0건)</td><td>${rt[2]}</td></tr>
-          <tr><th>재난 / 화재</th><td>재난( ${rt[3]}건), 화재( 0건), 방화( 0건)</td><td>${rt[3]}</td></tr>
-          <tr><th>교통사고 등<br>안전대응</th><td>교통사고( ${rt[4]}건), 도주차량( 0건), 기타( 0건)</td><td>${rt[4]}</td></tr>
-          <tr><th>기타사항</th><td>실종( 0건), 사건사고방지( ${rt[5]}건)</td><td>${rt[5]}</td></tr>
+          <tr><th>강력범죄</th><td>${formatDetailCounts(periodRealtime, "강력")}</td><td>${rt[0]}</td></tr>
+          <tr><th>경범죄</th><td>${formatDetailCounts(periodRealtime, "경범죄")}</td><td>${rt[1]}</td></tr>
+          <tr><th>청소년 비위</th><td>${formatDetailCounts(periodRealtime, "청소년비위")}</td><td>${rt[2]}</td></tr>
+          <tr><th>재난 / 화재</th><td>${formatDetailCounts(periodRealtime, "재난/화재")}</td><td>${rt[3]}</td></tr>
+          <tr><th>교통사고 등<br>안전대응</th><td>${formatDetailCounts(periodRealtime, "교통사고등안전대응")}</td><td>${rt[4]}</td></tr>
+          <tr><th>기타사항</th><td>${formatDetailCounts(periodRealtime, "기타대응")}</td><td>${rt[5]}</td></tr>
           <tr><th>민원응대</th><td>비상벨 대응( ${civil.bellResponse}건), 비상벨 계도( ${civil.bellGuide}건), 비상벨 기타( ${civil.bellEtc}건)<br>전화 민원( ${civil.phone}건), 정보공개청구( ${civil.info}건)<br>안심in 서비스 긴급도움 접수( 0건)</td><td>${civil.bellResponse + civil.bellGuide + civil.bellEtc + civil.phone + civil.info}</td></tr>
         </tbody>
       </table>
@@ -2096,7 +2244,7 @@ function buildMonthlyReport(key) {
       <table class="reportTable monthlyServiceTable"><tbody><tr><th>현 황</th><th>근무 내용</th><th>비 고</th></tr><tr><td>·기존 사회복무요원 26.1.3.자 소집해제</td><td></td><td>·신규 사회복무요원 배치 미정</td></tr></tbody></table>
 
       <h2 class="monthlySubTitle">□ CCTV 관제요청 현황 [경찰서 → 관제센터] <em>(단위 : 건)</em></h2>
-      <table class="reportTable monthlySimpleTable"><thead><tr><th>합 계</th><th>강력범죄</th><th>경범죄</th><th>청소년 비위</th><th>재난/화재</th><th>교통사고 등<br>안전대응</th><th>실종 및<br>요구조자</th><th>기타</th></tr></thead><tbody><tr><td>${sum(police)}</td>${police.map((v) => `<td>${v}</td>`).join("")}</tr></tbody></table>
+      <table class="reportTable monthlySimpleTable"><thead><tr><th>합 계</th><th>강력범죄</th><th>경범죄</th><th>청소년 비위</th><th>재난/화재</th><th>교통사고 등<br>안전대응</th><th>기타대응</th></tr></thead><tbody><tr><td>${sum(police)}</td>${police.map((v) => `<td>${v}</td>`).join("")}</tr></tbody></table>
 
       <h2 class="monthlySubTitle">□ CCTV 영상자료 열람·제공 [관제센터 → 요청기관 및 부서] <em>(단위 : 건)</em></h2>
       <table class="reportTable monthlySimpleTable"><tbody><tr><th>구 분</th><th>계</th><th>경찰서</th><th>자원순환과</th><th>동행정복지센터</th><th>타기관(통계)</th><th>기타(법원 등)</th></tr><tr><th>열 람</th><td>${videoView}</td><td>${videoView}</td><td>0</td><td>0</td><td>0</td><td>0</td></tr><tr><th>제 공</th><td>${videoCopy}</td><td>${videoCopy}</td><td>0</td><td>0</td><td>0</td><td>0</td></tr><tr><th>합 계</th><td>${videoView + videoCopy}</td><td>${videoView + videoCopy}</td><td>0</td><td>0</td><td>0</td><td>0</td></tr></tbody></table>
@@ -2125,7 +2273,8 @@ function recordBelongsToMember(item, member) {
 }
 
 function countMemberRecords(key, member) {
-  const rt = realtimeCategories.map((category) => countBy(realtimeRecords, (r) => r.date.startsWith(key) && recordBelongsToMember(r, member) && r.category === category));
+  const memberRealtime = realtimeRecords.filter((r) => r.date.startsWith(key) && recordBelongsToMember(r, member));
+  const rt = realtimeCategories.map((category) => countIncidentByMajor(memberRealtime, category));
   const bellResponse = countBy(civilRecords, (r) => r.date.startsWith(key) && recordBelongsToMember(r, member) && r.type === "비상벨대응");
   const bellGuide = countBy(civilRecords, (r) => r.date.startsWith(key) && recordBelongsToMember(r, member) && r.type === "비상벨계도");
   const bellEtc = countBy(civilRecords, (r) => r.date.startsWith(key) && recordBelongsToMember(r, member) && r.type === "비상벨기타");
@@ -2259,7 +2408,7 @@ function getSearchText(item, scope) {
   if (scope === "docNo") return [item.receiptNo, item.approval?.docNo, item.destroy?.docNo, item.destroy?.sendDocNo].join(" ");
 
   return [
-    item.date, item.time, item.startTime, item.dispatchTime, item.endTime, item.agency, item.specialTitle, item.operators, item.manageNo, item.location, item.category, item.type, item.process,
+    item.date, item.time, item.startTime, item.dispatchTime, item.endTime, item.agency, item.specialTitle, item.operators, item.manageNo, item.location, item.category, item.detailCategory, item.type, item.process,
     item.agency, item.complainantInfo, item.complainantPhone, item.claimDate, item.desiredDate, item.desiredTime, item.result, item.claimantName, item.claimantPhone, item.receiptNo, item.content, item.action, item.note,
     approvalDoc, destroyDoc,
   ].join(" ");

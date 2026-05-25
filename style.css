@@ -3985,3 +3985,28 @@ body.printingReport #closeReportModal {
     padding: 7px 3px !important;
   }
 }
+
+/* =====================
+   v0.7.9 area/detail category patch
+===================== */
+
+.headerRight .userName,
+.userName {
+  max-width: 118px !important;
+}
+
+#rtDetailCategory,
+#policeDetailCategory,
+#settingAreaBaseArea,
+#settingAreaBaseMonth,
+#settingAreaPattern {
+  background: var(--surface);
+}
+
+@media (max-width: 390px) {
+  .headerRight .userName,
+  .userName {
+    max-width: 108px !important;
+    font-size: 12.5px !important;
+  }
+}

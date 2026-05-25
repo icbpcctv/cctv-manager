@@ -261,6 +261,31 @@
         </details>
 
         <details class="settingDetails">
+          <summary>근무구역 패턴</summary>
+
+          <label for="settingAreaBaseMonth">기준 월</label>
+          <input id="settingAreaBaseMonth" type="month" />
+
+          <label for="settingAreaBaseArea">기준 월 구역</label>
+          <select id="settingAreaBaseArea">
+            <option value="A">A구역</option>
+            <option value="B">B구역</option>
+            <option value="C">C구역</option>
+            <option value="D">D구역</option>
+          </select>
+
+          <label for="settingAreaPattern">구역 순서</label>
+          <input id="settingAreaPattern" type="text" placeholder="A,C,D,B" />
+
+          <p class="hintText">예: 2026년 5월 A구역 / 순서 A,C,D,B</p>
+
+          <div class="actionRow inner">
+            <button id="saveAreaSettingBtn" type="button">저장</button>
+            <button id="resetAreaSettingBtn" type="button">초기화</button>
+          </div>
+        </details>
+
+        <details class="settingDetails">
           <summary>조 입력 / 변경</summary>
 
           <label for="activeTeamSelect">현재 사용할 조</label>
@@ -483,11 +508,14 @@
           <select id="rtCategory">
             <option>강력</option>
             <option>경범죄</option>
-            <option>청소년</option>
-            <option>재난</option>
-            <option>교통사고</option>
-            <option>기타</option>
+            <option>청소년비위</option>
+            <option>재난/화재</option>
+            <option>교통사고등안전대응</option>
+            <option>기타대응</option>
           </select>
+
+          <label for="rtDetailCategory">세부구분</label>
+          <select id="rtDetailCategory"></select>
 
           <label for="rtContent">내용</label>
           <textarea id="rtContent" rows="4"></textarea>
@@ -583,12 +611,14 @@
           <select id="policeCategory">
             <option>강력</option>
             <option>경범죄</option>
-            <option>청소년</option>
-            <option>재난</option>
-            <option>실종</option>
-            <option>교통사고</option>
-            <option>기타</option>
+            <option>청소년비위</option>
+            <option>재난/화재</option>
+            <option>교통사고등안전대응</option>
+            <option>기타대응</option>
           </select>
+
+          <label for="policeDetailCategory">세부구분</label>
+          <select id="policeDetailCategory"></select>
 
           <label for="policeAgency">요청기관</label>
           <select id="policeAgency" class="compactSelect">
