@@ -4063,3 +4063,307 @@ img[src*="logo-bupyeong"] {
     max-width: 66px !important;
   }
 }
+
+
+/* =====================
+   v0.8.1 header logo fixed-height containment
+===================== */
+
+/* 상단 카드 높이가 로고 원본 비율 때문에 늘어나지 않도록 로고 영역 자체를 고정 */
+.appHeader {
+  min-height: 72px !important;
+  max-height: 72px !important;
+  overflow: hidden !important;
+  align-items: center !important;
+}
+
+/* 가운데 로고 칸은 고정 박스로 두고, 이미지가 이 박스 밖으로 레이아웃을 밀지 못하게 함 */
+.headerCenter {
+  width: 58px !important;
+  min-width: 58px !important;
+  max-width: 58px !important;
+  height: 44px !important;
+  min-height: 44px !important;
+  max-height: 44px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  overflow: hidden !important;
+  flex: 0 0 58px !important;
+}
+
+/* 새 부평구 로고는 세로형 원본이라 높이를 기준으로 강제 축소 */
+.headerCenter img,
+.headerCenter .appLogo,
+.appHeader img[src*="logo-bupyeong"],
+img.appLogo {
+  width: auto !important;
+  height: 36px !important;
+  max-width: 54px !important;
+  max-height: 36px !important;
+  object-fit: contain !important;
+  object-position: center !important;
+  display: block !important;
+  flex: 0 0 auto !important;
+}
+
+/* 기존 다른 로고 관련 규칙보다 우선 적용 */
+.appLogo {
+  width: auto !important;
+  height: 36px !important;
+  max-width: 54px !important;
+  max-height: 36px !important;
+}
+
+@media (max-width: 390px) {
+  .appHeader {
+    min-height: 68px !important;
+    max-height: 68px !important;
+  }
+
+  .headerCenter {
+    width: 50px !important;
+    min-width: 50px !important;
+    max-width: 50px !important;
+    height: 40px !important;
+    min-height: 40px !important;
+    max-height: 40px !important;
+    flex-basis: 50px !important;
+  }
+
+  .headerCenter img,
+  .headerCenter .appLogo,
+  .appHeader img[src*="logo-bupyeong"],
+  img.appLogo,
+  .appLogo {
+    height: 32px !important;
+    max-height: 32px !important;
+    max-width: 48px !important;
+  }
+}
+
+
+/* =====================
+   v0.8.2 layout/font/report refinement
+===================== */
+
+/* 시스템 텍스트 확대 설정을 최대한 따르도록 기본 기준을 올림 */
+html {
+  font-size: 16px;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+body {
+  font-size: 15px;
+}
+
+/* 전체 글자 크기 상향 + 표 내부 여백 축소 */
+.sectionTitle h2 {
+  font-size: 20px !important;
+  letter-spacing: -0.45px;
+}
+
+.panel h2,
+.detailBlock h3,
+.statusHeader h3 {
+  font-size: 18px !important;
+  line-height: 1.2 !important;
+}
+
+table {
+  font-size: 13.6px !important;
+}
+
+th,
+td {
+  padding: 6px 5px !important;
+  line-height: 1.22 !important;
+}
+
+th {
+  white-space: normal !important;
+  word-break: keep-all;
+  text-align: center;
+}
+
+td {
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+
+.compactMatrix table {
+  min-width: 520px !important;
+}
+
+.wideScroll table {
+  min-width: 700px !important;
+}
+
+.emptyCell {
+  padding: 12px 0 !important;
+  font-size: 13.2px !important;
+}
+
+.monthHint {
+  font-size: 13px !important;
+}
+
+/* 홈 상단 요약 카드와 하단 세부 내역의 시각적 구분 강화 */
+#homePage > .statusBlock {
+  border-color: color-mix(in srgb, var(--accent-blue) 26%, var(--line));
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.96) 0%, var(--surface-blue) 100%);
+  box-shadow: 0 12px 26px rgba(63, 83, 105, 0.075);
+}
+
+#homePage > .statusBlock .statusHeader {
+  margin: -6px -6px 8px;
+  padding: 8px 10px;
+  border-radius: 14px;
+  background: linear-gradient(90deg, var(--accent-soft), rgba(255,255,255,0.72));
+}
+
+#homePage > .statusBlock .statusHeader h3 {
+  margin-bottom: 0 !important;
+  color: var(--accent-blue);
+}
+
+#homePage > .statusBlock table {
+  background: transparent;
+}
+
+#homePage > .statusBlock tr.total,
+#homePage > .statusBlock tbody tr:last-child {
+  background: rgba(232, 238, 244, 0.9);
+}
+
+#homePage .detailSectionTitle {
+  margin-top: 26px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+
+#homePage > .detailBlock {
+  padding: 12px;
+  border-color: rgba(219, 225, 232, 0.95);
+  background: #fff;
+  box-shadow: 0 5px 15px rgba(40, 50, 65, 0.035);
+}
+
+#homePage > .detailBlock .detailHeader {
+  margin: -2px 0 8px;
+  padding-left: 8px;
+  border-left: 4px solid var(--accent-soft);
+}
+
+#homePage > .detailBlock h3 {
+  color: var(--text-soft);
+  font-size: 16.5px !important;
+}
+
+/* 관리탭으로 이동한 보고서/검색 영역 */
+.manageReportHub {
+  border-color: color-mix(in srgb, var(--accent-blue) 22%, var(--line));
+  background: linear-gradient(180deg, #ffffff 0%, var(--surface-blue) 100%);
+}
+
+#managePage .reportPanel,
+#managePage .monthSearchPanel {
+  margin-bottom: 12px;
+}
+
+/* 보고서 출력 양식: 한글 양식 느낌의 굵은 외곽선/이중선 강화 */
+.reportDoc.reportPaper {
+  font-size: 12px;
+}
+
+.reportTable {
+  border: 2.2px solid #111 !important;
+  border-collapse: collapse !important;
+}
+
+.reportTable th,
+.reportTable td {
+  border: 1px solid #222 !important;
+}
+
+.reportTable thead tr:last-child th,
+.reportTable tbody tr:first-child th,
+.reportTable tbody tr:first-child td {
+  border-top: 2px solid #111 !important;
+}
+
+.reportTable tr:last-child th,
+.reportTable tr:last-child td {
+  border-bottom: 2px solid #111 !important;
+}
+
+.dailyStatsTable,
+.dailyLogTable,
+.dailySpecialTable,
+.monthlyWorkerTable,
+.monthlyDetailTable,
+.monthlySimpleTable,
+.monthlySpecialOutput {
+  border-top: 3px double #111 !important;
+  border-bottom: 3px double #111 !important;
+}
+
+.dailyStatsTable th,
+.dailyStatsTable td {
+  padding: 2px 2px !important;
+  font-size: 10.8px !important;
+}
+
+.dailyLogTable th,
+.dailyLogTable td,
+.dailySpecialTable th,
+.dailySpecialTable td {
+  font-size: 11.2px !important;
+}
+
+.monthlyWorkerTable th,
+.monthlyWorkerTable td {
+  font-size: 8.9px !important;
+}
+
+.monthlyDetailTable th,
+.monthlyDetailTable td,
+.monthlySimpleTable th,
+.monthlySimpleTable td {
+  font-size: 10.4px !important;
+}
+
+@media (max-width: 390px) {
+  body {
+    font-size: 14.5px;
+  }
+
+  .sectionTitle h2 {
+    font-size: 19px !important;
+  }
+
+  .panel h2,
+  .detailBlock h3,
+  .statusHeader h3 {
+    font-size: 17.2px !important;
+  }
+
+  table {
+    font-size: 13px !important;
+  }
+
+  th,
+  td {
+    padding: 5px 4px !important;
+  }
+
+  .compactMatrix table {
+    min-width: 500px !important;
+  }
+
+  .wideScroll table {
+    min-width: 660px !important;
+  }
+}
