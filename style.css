@@ -4063,3 +4063,315 @@ img[src*="logo-bupyeong"] {
     max-width: 66px !important;
   }
 }
+
+
+/* =====================
+   v0.8.1-pc responsive desktop layout
+   기준: 사용자가 올린 v0.8.0 안정본
+===================== */
+
+/* PC 화면에서는 모바일 하단탭을 왼쪽 사이드바로 변환 */
+@media (min-width: 900px) {
+  body {
+    background:
+      radial-gradient(circle at 15% 0%, rgba(64, 126, 201, 0.06), transparent 28%),
+      linear-gradient(180deg, #f8f9fb 0%, #f2f4f7 100%);
+  }
+
+  .app {
+    width: calc(100% - 248px);
+    max-width: none !important;
+    min-height: 100vh;
+    margin: 0 0 0 248px !important;
+    padding: 22px 26px 38px !important;
+    box-sizing: border-box;
+  }
+
+  .bottomTabs {
+    position: fixed !important;
+    left: 0 !important;
+    top: 0 !important;
+    bottom: 0 !important;
+    z-index: 190;
+    width: 224px !important;
+    max-width: 224px !important;
+    height: 100vh !important;
+    transform: none !important;
+    display: flex !important;
+    flex-direction: column !important;
+    grid-template-columns: none !important;
+    gap: 8px;
+    padding: 24px 14px !important;
+    box-sizing: border-box;
+    border-top: 0 !important;
+    border-right: 1px solid rgba(222, 226, 234, 0.95);
+    background: rgba(255, 255, 255, 0.92) !important;
+    backdrop-filter: blur(22px);
+    box-shadow: 10px 0 24px rgba(30, 41, 59, 0.055);
+  }
+
+  .bottomTabs::before {
+    content: "CCTV Manager";
+    display: block;
+    margin: 0 4px 14px;
+    padding: 0 2px 18px;
+    border-bottom: 1px solid rgba(230, 233, 238, 0.95);
+    color: var(--text);
+    font-size: 20px;
+    font-weight: 900;
+    letter-spacing: -0.6px;
+  }
+
+  .bottomTab {
+    width: 100%;
+    min-height: 52px;
+    grid-template-columns: 28px 1fr;
+    grid-auto-flow: column;
+    place-items: center start;
+    justify-content: start;
+    gap: 12px;
+    padding: 12px 14px;
+    border-radius: 16px;
+    box-sizing: border-box;
+    text-align: left;
+  }
+
+  .bottomTab strong {
+    font-size: 14px;
+    font-weight: 780;
+  }
+
+  .bottomTab .tabIcon {
+    width: 22px;
+    height: 22px;
+  }
+
+  .bottomTab.active {
+    background: var(--accent-soft);
+    color: var(--accent-blue);
+    box-shadow: inset 0 0 0 1px rgba(89, 139, 198, 0.08);
+  }
+
+  .appHeader {
+    position: sticky;
+    top: 14px;
+    z-index: 110;
+    display: grid !important;
+    grid-template-columns: minmax(260px, 1fr) 74px minmax(160px, 0.55fr) !important;
+    gap: 18px !important;
+    align-items: center;
+    margin-bottom: 18px !important;
+    padding: 16px 20px !important;
+    border-radius: 22px !important;
+  }
+
+  .appHeader h1 {
+    font-size: 25px !important;
+  }
+
+  .headerSub {
+    font-size: 13px;
+  }
+
+  .headerCenter {
+    justify-self: center;
+    display: grid;
+    place-items: center;
+    overflow: hidden;
+  }
+
+  .appLogo,
+  .headerCenter .appLogo {
+    width: auto !important;
+    max-width: 58px !important;
+    height: 40px !important;
+    max-height: 40px !important;
+    object-fit: contain !important;
+  }
+
+  .headerRight {
+    justify-self: end;
+    min-width: 150px;
+    text-align: right;
+  }
+
+  .teamBadge {
+    justify-content: center;
+  }
+
+  .userName {
+    max-width: 180px !important;
+    font-size: 15px !important;
+  }
+
+  /* 홈: 상단 현황보드는 2열, 세부 표는 넓게 */
+  #homePage.page.active {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+    align-items: start;
+  }
+
+  #homePage .sectionTitle,
+  #homePage .detailSectionTitle,
+  #homePage .detailBlock {
+    grid-column: 1 / -1;
+  }
+
+  #homePage .statusBlock {
+    margin-bottom: 0;
+  }
+
+  /* 월현황: 보고서/검색/요약은 넓은 화면 활용 */
+  #monthPage.page.active {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+    align-items: start;
+  }
+
+  #monthPage .monthControl,
+  #monthPage .actionRow,
+  #monthPage .sectionTitle,
+  #monthPage .detailBlock {
+    grid-column: 1 / -1;
+  }
+
+  #monthPage .reportPanel,
+  #monthPage .monthSearchPanel,
+  #monthPage .statusBlock {
+    margin-bottom: 0;
+  }
+
+  #monthPage .statusBlock[data-list-key="monthDaily"] {
+    grid-column: 1 / -1;
+  }
+
+  /* 지도는 PC에서 더 크게 */
+  #mapPage.page.active {
+    display: block !important;
+  }
+
+  #mapPage .mapBox,
+  #map,
+  #kakaoMap {
+    min-height: 620px;
+  }
+
+  /* 관리 화면은 2열 카드 */
+  #managePage.page.active {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1.25fr) minmax(320px, 0.75fr);
+    gap: 16px;
+    align-items: start;
+  }
+
+  #managePage .panel {
+    margin-bottom: 0;
+  }
+
+  #managePage .appInfo,
+  #managePage .creatorInfo,
+  #managePage .emptySpace {
+    grid-column: 2;
+  }
+
+  .panel,
+  .statusBlock,
+  .detailBlock {
+    border-radius: 20px;
+    padding: 16px;
+  }
+
+  .sectionTitle {
+    margin-top: 8px;
+  }
+
+  .tableWrap,
+  .wideScroll {
+    overflow-x: auto;
+  }
+
+  .compactMatrix table,
+  .wideScroll table {
+    min-width: 100%;
+  }
+
+  /* 입력/리스트/보고서 모달은 PC에서 중앙 팝업 */
+  .modal {
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 24px;
+    box-sizing: border-box;
+  }
+
+  .sheet {
+    width: min(760px, calc(100vw - 300px)) !important;
+    max-width: 760px !important;
+    max-height: min(88vh, 860px) !important;
+    border-radius: 24px !important;
+    box-shadow: 0 24px 70px rgba(20, 28, 40, 0.18);
+  }
+
+  .listSheet {
+    width: min(720px, calc(100vw - 300px)) !important;
+  }
+
+  .reportSheet {
+    width: min(1040px, calc(100vw - 300px)) !important;
+    max-width: 1040px !important;
+  }
+
+  /* 새입력 버튼은 PC에서는 우측 하단 */
+  .quickDialWrap {
+    left: auto !important;
+    right: 34px !important;
+    bottom: 30px !important;
+    transform: none !important;
+    z-index: 220;
+  }
+
+  .quickDialWrap.open .quickDial {
+    left: auto;
+    right: 0;
+  }
+
+  .quickDialWrap.open .dialItem:nth-child(1) {
+    transform: translate(-12px, -176px) scale(1);
+  }
+
+  .quickDialWrap.open .dialItem:nth-child(2) {
+    transform: translate(-105px, -142px) scale(1);
+  }
+
+  .quickDialWrap.open .dialItem:nth-child(3) {
+    transform: translate(-148px, -58px) scale(1);
+  }
+
+  .quickDialWrap.open .dialItem:nth-child(4) {
+    transform: translate(-105px, 26px) scale(1);
+  }
+
+  .quickDialWrap.open .dialItem:nth-child(5) {
+    transform: translate(-12px, 60px) scale(1);
+  }
+
+  /* PC에서는 표 안 글자 가독성만 살짝 키움. 구조/항목/폭은 건드리지 않음 */
+  table {
+    font-size: 13px;
+  }
+
+  th,
+  td {
+    padding: 9px 9px;
+  }
+}
+
+/* 아주 큰 모니터에서는 본문 폭을 여유 있게 제한 */
+@media (min-width: 1500px) {
+  .app {
+    width: min(1280px, calc(100% - 248px));
+    margin-left: 248px !important;
+    margin-right: auto !important;
+  }
+}
