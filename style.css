@@ -4203,3 +4203,94 @@ input[list] {
     font-size: 9.8px;
   }
 }
+
+
+/* =====================
+   v0.8.5-mobile-code team access code
+===================== */
+
+.teamCodeModal {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(15, 23, 42, 0.35);
+  backdrop-filter: blur(10px);
+}
+
+.teamCodeModal.show {
+  display: flex;
+}
+
+.teamCodeSheet {
+  width: min(360px, 100%);
+  padding: 20px;
+  border-radius: 22px;
+  background: var(--surface);
+  box-shadow: 0 24px 70px rgba(15, 23, 42, 0.24);
+  border: 1px solid rgba(230, 233, 238, 0.92);
+}
+
+.teamCodeSheet h2 {
+  margin: 0 0 8px;
+  font-size: 20px;
+  font-weight: 900;
+  color: var(--text);
+}
+
+.teamCodeSheet p {
+  margin: 0 0 14px;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.teamCodeSheet label {
+  display: block;
+  margin: 12px 0 6px;
+  color: var(--text-soft);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.teamCodeSheet select,
+.teamCodeSheet input {
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 44px;
+  padding: 11px 12px;
+  border: 1px solid rgba(220, 226, 234, 0.94);
+  border-radius: 14px;
+  background: var(--surface-soft);
+  font-size: 16px;
+}
+
+.teamCodeSheet button {
+  width: 100%;
+  margin-top: 14px;
+  min-height: 46px;
+  border-radius: 15px;
+  background: var(--accent-blue);
+  color: white;
+  font-size: 15px;
+  font-weight: 850;
+}
+
+.teamCodeMessage {
+  min-height: 18px;
+  margin: 10px 0 0 !important;
+  color: #c76b6b !important;
+  font-weight: 750;
+}
+
+.teamCodeActionList {
+  margin-top: 8px;
+}
+
+.teamCodeActionList button {
+  background: var(--surface-soft);
+  color: var(--accent-blue);
+}

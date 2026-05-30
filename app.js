@@ -1,4 +1,4 @@
-const APP_VERSION = "0.8.4-mobile-cloud";
+const APP_VERSION = "0.8.5-mobile-code";
 const KAKAO_EXTERNAL_MAP_URL = "https://map.kakao.com/";
 const DEFAULT_MAP_CENTER = { lat: 37.5070, lng: 126.7218 };
 const DEFAULT_MAP_LABEL = "부평구청";
@@ -12,6 +12,18 @@ const INFO_KEY = "cctv_info_records_v2";
 const PERSONAL_SPECIAL_KEY = "cctv_personal_specials_v2";
 const TEAM_SPECIAL_KEY = "cctv_team_specials_v2";
 const LAST_BACKUP_KEY = "cctv_last_backup_v2";
+
+const TEAM_ACCESS_KEY = "cctv_team_access_v1";
+const DEFAULT_TEAM_CODES = {
+  "1조": "1TEAM-2026",
+  "2조": "2TEAM-2026",
+  "3조": "3TEAM-2026",
+  "4조": "4TEAM-2026",
+};
+
+let teamAccess = readJson(TEAM_ACCESS_KEY, {});
+let pendingAccessTeam = "";
+
 
 const CLOUD_ENABLED = true;
 const FIREBASE_CONFIG = {
@@ -105,10 +117,17 @@ function init() {
   bindMonthSearch();
   bindBackup();
   bindSettings();
+  bindTeamAccess();
   applyTheme();
   saveLocalAll();
   renderAll();
-  initCloudSync();
+
+  if (hasTeamAccess(getCloudTeamId())) {
+    initCloudSync();
+  } else {
+    showTeamCodeModal(getCloudTeamId());
+    setCloudStatus("공유코드 입력 필요");
+  }
 }
 
 function readJson(key, fallback) {
@@ -808,6 +827,11 @@ $("editTeamSelect").addEventListener("change", () => {
     $("editTeamSelect").value = team;
     fillTeamInputs(team);
     populateCurrentUserSelect(team);
+
+    if (!hasTeamAccess(team)) {
+      showTeamCodeModal(team);
+      setCloudStatus("공유코드 입력 필요");
+    }
   });
 }
 
@@ -1879,7 +1903,14 @@ function saveTeamSettings() {
 
   saveAll();
   renderAll();
-  switchCloudTeamIfNeeded();
+
+  if (hasTeamAccess(settings.activeTeam)) {
+    switchCloudTeamIfNeeded();
+  } else {
+    showTeamCodeModal(settings.activeTeam);
+    setCloudStatus("공유코드 입력 필요");
+  }
+
   alert("조 정보가 저장되었습니다.");
 }
 
@@ -1902,6 +1933,106 @@ function createBackupPayload() {
     personalSpecials,
     teamSpecials,
   };
+}
+
+
+
+function normalizeTeamCode(code) {
+  return String(code || "").trim().toUpperCase();
+}
+
+function getTeamAccessCode(team) {
+  return DEFAULT_TEAM_CODES[team] || "";
+}
+
+function hasTeamAccess(team = getCloudTeamId()) {
+  return teamAccess[team] === true;
+}
+
+function saveTeamAccess() {
+  saveJson(TEAM_ACCESS_KEY, teamAccess);
+}
+
+function bindTeamAccess() {
+  if ($("teamCodeSubmitBtn")) {
+    $("teamCodeSubmitBtn").addEventListener("click", submitTeamCode);
+  }
+
+  if ($("teamCodeInput")) {
+    $("teamCodeInput").addEventListener("keydown", (event) => {
+      if (event.key === "Enter") submitTeamCode();
+    });
+  }
+
+  if ($("changeTeamCodeBtn")) {
+    $("changeTeamCodeBtn").addEventListener("click", () => showTeamCodeModal(getCloudTeamId()));
+  }
+
+  if ($("clearTeamCodeBtn")) {
+    $("clearTeamCodeBtn").addEventListener("click", () => {
+      const team = getCloudTeamId();
+      if (!confirm(`${team} 접속코드를 초기화할까요? 다시 접속하려면 공유코드를 입력해야 합니다.`)) return;
+      delete teamAccess[team];
+      saveTeamAccess();
+      showTeamCodeModal(team);
+      setCloudStatus("공유코드 입력 필요");
+    });
+  }
+
+  if ($("teamCodeTeam")) {
+    $("teamCodeTeam").addEventListener("change", () => {
+      pendingAccessTeam = $("teamCodeTeam").value;
+      $("teamCodeMessage").textContent = "";
+    });
+  }
+}
+
+function showTeamCodeModal(team = getCloudTeamId()) {
+  pendingAccessTeam = team;
+  if ($("teamCodeTeam")) $("teamCodeTeam").value = team;
+  if ($("teamCodeInput")) $("teamCodeInput").value = "";
+  if ($("teamCodeMessage")) $("teamCodeMessage").textContent = "";
+  if ($("teamCodeModal")) $("teamCodeModal").classList.add("show");
+}
+
+function closeTeamCodeModal() {
+  if ($("teamCodeModal")) $("teamCodeModal").classList.remove("show");
+}
+
+async function submitTeamCode() {
+  const team = $("teamCodeTeam")?.value || pendingAccessTeam || getCloudTeamId();
+  const input = normalizeTeamCode($("teamCodeInput")?.value);
+  const correct = normalizeTeamCode(getTeamAccessCode(team));
+
+  if (!input) {
+    $("teamCodeMessage").textContent = "공유코드를 입력해주세요.";
+    return;
+  }
+
+  if (input !== correct) {
+    $("teamCodeMessage").textContent = "공유코드가 맞지 않습니다.";
+    return;
+  }
+
+  teamAccess[team] = true;
+  saveTeamAccess();
+
+  settings.activeTeam = team;
+  settings.teamName = team;
+  settings.members = settings.teams[team] || [];
+  if (!settings.currentUser || !settings.members.includes(settings.currentUser)) {
+    settings.currentUser = settings.members[0] || "";
+  }
+
+  saveLocalAll();
+  closeTeamCodeModal();
+  renderAll();
+
+  if (!cloudReady) {
+    await initCloudSync();
+  } else {
+    await loadCloudData({ preferCloud: true });
+  }
 }
 
 
@@ -1940,7 +2071,7 @@ function setCloudStatus(text) {
 
 function getCloudStateClass() {
   if (cloudSaving || cloudLoading || /연결 중|저장 중|불러오는 중/.test(cloudStatusText)) return "saving";
-  if (/실패|오프라인|로컬/.test(cloudStatusText)) return "error";
+  if (/실패|오프라인|로컬|공유코드/.test(cloudStatusText)) return "error";
   if (/완료|생성/.test(cloudStatusText)) return "ok";
   return "";
 }
@@ -1959,6 +2090,12 @@ function renderCloudStatus() {
 
 async function initCloudSync() {
   if (!CLOUD_ENABLED) return;
+
+  if (!hasTeamAccess(getCloudTeamId())) {
+    showTeamCodeModal(getCloudTeamId());
+    setCloudStatus("공유코드 입력 필요");
+    return;
+  }
 
   try {
     if (!window.firebase || !window.firebase.firestore) {
@@ -1980,6 +2117,12 @@ async function initCloudSync() {
 }
 
 async function loadCloudData({ preferCloud = true } = {}) {
+  if (!hasTeamAccess(getCloudTeamId())) {
+    showTeamCodeModal(getCloudTeamId());
+    setCloudStatus("공유코드 입력 필요");
+    return;
+  }
+
   if (!cloudReady || !cloudDb) return;
   if (cloudLoading) return;
 
@@ -2025,6 +2168,7 @@ function scheduleCloudSave() {
 }
 
 async function saveCloudNow({ force = false } = {}) {
+  if (!hasTeamAccess(getCloudTeamId())) return;
   if (!cloudReady || !cloudDb) return;
   if (cloudLoading && !force) return;
 

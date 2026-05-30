@@ -28,6 +28,27 @@
       </div>
     </header>
 
+  <div id="teamCodeModal" class="teamCodeModal">
+    <div class="teamCodeSheet">
+      <h2>조별 공유코드</h2>
+      <p>클라우드 데이터를 사용하려면 해당 조의 공유코드를 입력하세요.</p>
+
+      <label for="teamCodeTeam">접속 조</label>
+      <select id="teamCodeTeam">
+        <option value="1조">1조</option>
+        <option value="2조">2조</option>
+        <option value="3조">3조</option>
+        <option value="4조">4조</option>
+      </select>
+
+      <label for="teamCodeInput">공유코드</label>
+      <input id="teamCodeInput" type="password" placeholder="공유코드 입력" autocomplete="off" />
+
+      <button id="teamCodeSubmitBtn" type="button">접속하기</button>
+      <p id="teamCodeMessage" class="teamCodeMessage"></p>
+    </div>
+  </div>
+
     <section id="homePage" class="page active">
       <section class="sectionTitle firstTitle">
         <h2>오늘 현황보드</h2>
@@ -365,6 +386,10 @@
         </div>
         <p id="backupText" class="hintText">백업 정보 없음</p>
         <p id="cloudStatusText" class="hintText cloudStatusText">클라우드 연결 준비 중</p>
+        <div class="actionList teamCodeActionList">
+          <button id="changeTeamCodeBtn" type="button">공유코드 재입력</button>
+          <button id="clearTeamCodeBtn" type="button">접속코드 초기화</button>
+        </div>
       </div>
 
       <div class="panel appInfo">
