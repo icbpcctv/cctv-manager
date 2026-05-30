@@ -1,4 +1,4 @@
-const APP_VERSION = "0.8.2-cloud";
+const APP_VERSION = "0.8.3-mobile-cloud";
 const KAKAO_EXTERNAL_MAP_URL = "https://map.kakao.com/";
 const DEFAULT_MAP_CENTER = { lat: 37.5070, lng: 126.7218 };
 const DEFAULT_MAP_LABEL = "부평구청";
@@ -811,6 +811,65 @@ $("editTeamSelect").addEventListener("change", () => {
   });
 }
 
+
+function updateInputSuggestions() {
+  const manageValues = uniqueCompact([
+    ...realtimeRecords.map((r) => r.manageNo),
+    ...civilRecords.map((r) => r.manageNo),
+    ...policeRecords.map((r) => r.manageNo),
+    ...infoRecords.map((r) => r.manageNo),
+  ]);
+
+  const locationValues = uniqueCompact([
+    ...realtimeRecords.map((r) => r.location),
+    ...civilRecords.map((r) => r.location),
+    ...policeRecords.map((r) => r.location),
+  ]);
+
+  const agencyValues = uniqueCompact([
+    ...realtimeRecords.map((r) => r.agency),
+    ...policeRecords.map((r) => r.agency),
+    ...videoRecords.map((r) => r.approval?.org),
+    ...videoRecords.map((r) => r.destroy?.org),
+    "부평상황실",
+    "삼산상황실",
+    "역전지구대(부평)",
+    "동암지구대(부평)",
+    "중앙지구대(삼산)",
+    "112",
+    "119",
+  ]);
+
+  fillDatalist("manageNoSuggestions", manageValues);
+  fillDatalist("locationSuggestions", locationValues);
+  fillDatalist("agencySuggestions", agencyValues);
+}
+
+function uniqueCompact(values) {
+  return Array.from(new Set(values.map((value) => String(value || "").trim()).filter(Boolean))).slice(0, 80);
+}
+
+function fillDatalist(id, values) {
+  const el = $(id);
+  if (!el) return;
+  el.innerHTML = values.map((value) => `<option value="${escapeHtml(value)}"></option>`).join("");
+}
+
+function finishInputSave(type) {
+  const keepGoing = $("continueInputAfterSave")?.checked;
+
+  saveAll();
+  renderAll();
+
+  if (keepGoing) {
+    openInputModal(type);
+    if ($("continueInputAfterSave")) $("continueInputAfterSave").checked = true;
+    return;
+  }
+
+  closeInputModal();
+}
+
 function renderAll() {
   applyTheme();
   renderHeader();
@@ -819,6 +878,7 @@ function renderAll() {
   renderMonthPage();
   renderBackupInfo();
   renderSettings();
+  updateInputSuggestions();
   renderCloudStatus();
 }
 
@@ -1605,9 +1665,7 @@ function saveRealtimeRecord(e) {
   };
   const saved = saveRecordToList("realtime", realtimeRecords, record);
   if ($("rtPersonalSpecial").checked) personalSpecials.push({ ...saved, id: makeId(), sourceId: saved.id });
-  saveAll();
-  closeInputModal();
-  renderAll();
+  finishInputSave("realtime");
 }
 
 function saveCivilRecord(e) {
@@ -1631,9 +1689,7 @@ function saveCivilRecord(e) {
   };
 
   saveRecordToList("civil", civilRecords, record);
-  saveAll();
-  closeInputModal();
-  renderAll();
+  finishInputSave("civil");
 }
 
 function savePoliceRecord(e) {
@@ -1657,9 +1713,7 @@ function savePoliceRecord(e) {
   };
   const saved = saveRecordToList("police", policeRecords, record);
   if ($("policeTeamSpecial").checked) teamSpecials.push({ ...saved, id: makeId(), sourceId: saved.id });
-  saveAll();
-  closeInputModal();
-  renderAll();
+  finishInputSave("police");
 }
 
 function saveVideoRecord(e) {
@@ -1707,9 +1761,7 @@ function saveVideoRecord(e) {
   }
 
   saveRecordToList("video", videoRecords, record);
-  saveAll();
-  closeInputModal();
-  renderAll();
+  finishInputSave("video");
 }
 
 function saveInfoRecord(e) {
@@ -1733,9 +1785,7 @@ function saveInfoRecord(e) {
   };
 
   saveRecordToList("info", infoRecords, record);
-  saveAll();
-  closeInputModal();
-  renderAll();
+  finishInputSave("info");
 }
 
 function parseListText(value) {
@@ -1882,13 +1932,16 @@ function getCloudDocRef() {
 }
 
 function setCloudStatus(text) {
-  cloudStatusText = text;
+  const now = new Date();
+  const hh = String(now.getHours()).padStart(2, "0");
+  const mm = String(now.getMinutes()).padStart(2, "0");
+  cloudStatusText = `${text} · ${hh}:${mm}`;
   renderCloudStatus();
 }
 
 function renderCloudStatus() {
-  const el = $("cloudStatusText");
-  if (el) el.textContent = cloudStatusText;
+  const targets = [$("cloudStatusText"), $("homeCloudStatus")].filter(Boolean);
+  targets.forEach((el) => { el.textContent = cloudStatusText; });
 }
 
 async function initCloudSync() {
@@ -1903,7 +1956,7 @@ async function initCloudSync() {
     if (!firebase.apps.length) firebase.initializeApp(FIREBASE_CONFIG);
     cloudDb = firebase.firestore();
     cloudReady = true;
-    setCloudStatus("클라우드 연결 중...");
+    setCloudStatus("클라우드 연결 중");
 
     await loadCloudData({ preferCloud: true });
   } catch (error) {
@@ -1921,7 +1974,7 @@ async function loadCloudData({ preferCloud = true } = {}) {
   const teamId = getCloudTeamId();
 
   try {
-    setCloudStatus(`${teamId} 클라우드 불러오는 중...`);
+    setCloudStatus(`${teamId} 클라우드 불러오는 중`);
     const ref = getCloudDocRef();
     const snap = await ref.get();
 
@@ -1967,7 +2020,7 @@ async function saveCloudNow({ force = false } = {}) {
 
   cloudSaving = true;
   try {
-    setCloudStatus(`${teamId} 클라우드 저장 중...`);
+    setCloudStatus(`${teamId} 클라우드 저장 중`);
     await getCloudDocRef().set({
       payload,
       teamId,
@@ -1985,6 +2038,7 @@ async function saveCloudNow({ force = false } = {}) {
 async function switchCloudTeamIfNeeded() {
   if (!cloudReady) return;
   const teamId = getCloudTeamId();
+
   if (teamId === cloudLastLoadedTeam) {
     scheduleCloudSave();
     return;

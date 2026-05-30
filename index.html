@@ -28,6 +28,8 @@
       </div>
     </header>
 
+    <div id="homeCloudStatus" class="homeCloudStatus">클라우드 연결 준비 중</div>
+
     <section id="homePage" class="page active">
       <section class="sectionTitle firstTitle">
         <h2>오늘 현황보드</h2>
@@ -403,6 +405,10 @@
     </button>
   </div>
 
+  <datalist id="manageNoSuggestions"></datalist>
+  <datalist id="locationSuggestions"></datalist>
+  <datalist id="agencySuggestions"></datalist>
+
   <nav class="bottomTabs">
     <button class="bottomTab active" type="button" data-page="homePage">
       <span class="tabIcon iconHome"></span>
@@ -497,14 +503,14 @@
 
           <div id="rtAgencyDirectGroup" class="hidden">
             <label for="rtAgencyDirect">기관 직접입력</label>
-            <input id="rtAgencyDirect" type="text" />
+            <input id="rtAgencyDirect" type="text" list="agencySuggestions" />
           </div>
 
           <label for="rtManageNo">관리번호</label>
-          <input id="rtManageNo" type="text" inputmode="latin" autocapitalize="characters" autocomplete="off" placeholder="예: S001, S002" />
+          <input id="rtManageNo" type="text" inputmode="latin" autocapitalize="characters" autocomplete="off" placeholder="예: S001, S002" list="manageNoSuggestions" />
 
           <label for="rtLocation">위치</label>
-          <input id="rtLocation" type="text" />
+          <input id="rtLocation" type="text" list="locationSuggestions" />
 
           <label for="rtCategory">구분</label>
           <select id="rtCategory">
@@ -576,12 +582,12 @@
 
           <div id="civilManageGroup">
             <label for="civilManageNo">관리번호</label>
-            <input id="civilManageNo" type="text" inputmode="latin" autocapitalize="characters" autocomplete="off" placeholder="예: S001, S002" />
+            <input id="civilManageNo" type="text" inputmode="latin" autocapitalize="characters" autocomplete="off" placeholder="예: S001, S002" list="manageNoSuggestions" />
           </div>
 
           <div id="civilLocationGroup">
             <label for="civilLocation">위치</label>
-            <input id="civilLocation" type="text" />
+            <input id="civilLocation" type="text" list="locationSuggestions" />
           </div>
 
           <div id="civilContentGroup">
@@ -643,14 +649,14 @@
 
           <div id="policeAgencyDirectGroup" class="hidden">
             <label for="policeAgencyDirect">요청기관 직접입력</label>
-            <input id="policeAgencyDirect" type="text" />
+            <input id="policeAgencyDirect" type="text" list="agencySuggestions" />
           </div>
 
           <label for="policeManageNo">관리번호</label>
-          <input id="policeManageNo" type="text" inputmode="latin" autocapitalize="characters" autocomplete="off" placeholder="예: S001, S002" />
+          <input id="policeManageNo" type="text" inputmode="latin" autocapitalize="characters" autocomplete="off" placeholder="예: S001, S002" list="manageNoSuggestions" />
 
           <label for="policeLocation">주소 / 위치</label>
-          <input id="policeLocation" type="text" />
+          <input id="policeLocation" type="text" list="locationSuggestions" />
 
           <label for="policeSpecialTitle">출력 제목</label>
           <input id="policeSpecialTitle" type="text" placeholder="예: 상황실/검거 절도, 실종 발견" />
@@ -714,7 +720,7 @@
             <input id="approvalVisitDateTime" type="datetime-local" />
 
             <label for="approvalOrg">소속기관</label>
-            <input id="approvalOrg" type="text" />
+            <input id="approvalOrg" type="text" list="agencySuggestions" />
 
             <label for="approvalRank">직급</label>
             <input id="approvalRank" type="text" />
@@ -750,7 +756,7 @@
             <input id="destroyVisitDateTime" type="datetime-local" />
 
             <label for="destroyOrg">소속기관</label>
-            <input id="destroyOrg" type="text" />
+            <input id="destroyOrg" type="text" list="agencySuggestions" />
 
             <label for="destroyRank">직급</label>
             <input id="destroyRank" type="text" />
@@ -810,7 +816,7 @@
           <input id="infoReceiptNo" type="text" />
 
           <label for="infoManageNo">관리번호</label>
-          <input id="infoManageNo" type="text" inputmode="latin" autocapitalize="characters" autocomplete="off" placeholder="예: S001, S002" />
+          <input id="infoManageNo" type="text" inputmode="latin" autocapitalize="characters" autocomplete="off" placeholder="예: S001, S002" list="manageNoSuggestions" />
 
           <label for="infoClaimantName">청구인이름</label>
           <input id="infoClaimantName" type="text" />
@@ -827,6 +833,11 @@
           <button class="saveBtn" type="submit">저장</button>
         </form>
       </div>
+
+      <label class="checkRow inputContinueWrap">
+        <input id="continueInputAfterSave" type="checkbox" />
+        <span>저장 후 같은 입력 계속하기</span>
+      </label>
 
       <div class="inputDeleteWrap">
         <button id="deleteRecordBtn" class="deleteRecordBtn hidden" type="button">삭제</button>
