@@ -1,4 +1,4 @@
-const APP_VERSION = "0.8.3-mobile-cloud";
+const APP_VERSION = "0.8.4-mobile-cloud";
 const KAKAO_EXTERNAL_MAP_URL = "https://map.kakao.com/";
 const DEFAULT_MAP_CENTER = { lat: 37.5070, lng: 126.7218 };
 const DEFAULT_MAP_LABEL = "부평구청";
@@ -813,40 +813,39 @@ $("editTeamSelect").addEventListener("change", () => {
 
 
 function updateInputSuggestions() {
-  const manageValues = uniqueCompact([
-    ...realtimeRecords.map((r) => r.manageNo),
-    ...civilRecords.map((r) => r.manageNo),
-    ...policeRecords.map((r) => r.manageNo),
-    ...infoRecords.map((r) => r.manageNo),
-  ]);
-
   const locationValues = uniqueCompact([
     ...realtimeRecords.map((r) => r.location),
     ...civilRecords.map((r) => r.location),
     ...policeRecords.map((r) => r.location),
-  ]);
+  ], 30);
 
   const agencyValues = uniqueCompact([
-    ...realtimeRecords.map((r) => r.agency),
-    ...policeRecords.map((r) => r.agency),
-    ...videoRecords.map((r) => r.approval?.org),
-    ...videoRecords.map((r) => r.destroy?.org),
     "부평상황실",
     "삼산상황실",
     "역전지구대(부평)",
     "동암지구대(부평)",
+    "철마지구대(부평)",
+    "부평2파출소(부평)",
+    "청천지구대(부평)",
+    "갈산지구대(삼산)",
+    "부흥지구대(삼산)",
     "중앙지구대(삼산)",
+    "부개파출소(삼산)",
+    "부개2파출소(삼산)",
     "112",
     "119",
-  ]);
+    ...realtimeRecords.map((r) => r.agency),
+    ...policeRecords.map((r) => r.agency),
+    ...videoRecords.map((r) => r.approval?.org),
+    ...videoRecords.map((r) => r.destroy?.org),
+  ], 30);
 
-  fillDatalist("manageNoSuggestions", manageValues);
   fillDatalist("locationSuggestions", locationValues);
   fillDatalist("agencySuggestions", agencyValues);
 }
 
-function uniqueCompact(values) {
-  return Array.from(new Set(values.map((value) => String(value || "").trim()).filter(Boolean))).slice(0, 80);
+function uniqueCompact(values, limit = 30) {
+  return Array.from(new Set(values.map((value) => String(value || "").trim()).filter(Boolean))).slice(0, limit);
 }
 
 function fillDatalist(id, values) {
@@ -1939,9 +1938,23 @@ function setCloudStatus(text) {
   renderCloudStatus();
 }
 
+function getCloudStateClass() {
+  if (cloudSaving || cloudLoading || /연결 중|저장 중|불러오는 중/.test(cloudStatusText)) return "saving";
+  if (/실패|오프라인|로컬/.test(cloudStatusText)) return "error";
+  if (/완료|생성/.test(cloudStatusText)) return "ok";
+  return "";
+}
+
 function renderCloudStatus() {
-  const targets = [$("cloudStatusText"), $("homeCloudStatus")].filter(Boolean);
-  targets.forEach((el) => { el.textContent = cloudStatusText; });
+  const detail = $("cloudStatusText");
+  if (detail) detail.textContent = cloudStatusText;
+
+  const dot = $("cloudStatusDot");
+  if (dot) {
+    dot.className = `cloudStatusDot ${getCloudStateClass()}`;
+    dot.title = cloudStatusText;
+    dot.setAttribute("aria-label", cloudStatusText);
+  }
 }
 
 async function initCloudSync() {
@@ -2700,7 +2713,16 @@ function labelHtml(value, mode = "default") {
     return civilMap[label] || escapeHtml(label);
   }
 
-  return escapeHtml(label);
+  const incidentDisplayMap = {
+    "강력": "강력",
+    "경범죄": "경범죄",
+    "청소년비위": "청소년<br>비위",
+    "재난/화재": "재난<br>화재",
+    "교통사고등안전대응": "교통<br>안전",
+    "기타대응": "기타<br>대응",
+  };
+
+  return incidentDisplayMap[label] || escapeHtml(label);
 }
 
 function renderMatrixTable(tableId, categories, rows, options = {}) {

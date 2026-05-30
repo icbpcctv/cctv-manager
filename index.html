@@ -24,11 +24,9 @@
 
       <div class="headerRight">
         <span id="headerTeamName" class="teamBadge">1조</span>
-        <strong id="headerUserName" class="userName">사용자</strong>
+        <div class="userStatusLine"><strong id="headerUserName" class="userName">사용자</strong><span id="cloudStatusDot" class="cloudStatusDot" title="클라우드 연결 준비 중"></span></div>
       </div>
     </header>
-
-    <div id="homeCloudStatus" class="homeCloudStatus">클라우드 연결 준비 중</div>
 
     <section id="homePage" class="page active">
       <section class="sectionTitle firstTitle">
@@ -404,9 +402,7 @@
       <strong>새입력</strong>
     </button>
   </div>
-
-  <datalist id="manageNoSuggestions"></datalist>
-  <datalist id="locationSuggestions"></datalist>
+<datalist id="locationSuggestions"></datalist>
   <datalist id="agencySuggestions"></datalist>
 
   <nav class="bottomTabs">
@@ -507,7 +503,7 @@
           </div>
 
           <label for="rtManageNo">관리번호</label>
-          <input id="rtManageNo" type="text" inputmode="latin" autocapitalize="characters" autocomplete="off" placeholder="예: S001, S002" list="manageNoSuggestions" />
+          <input id="rtManageNo" type="text" inputmode="latin" autocapitalize="characters" autocomplete="off" placeholder="예: S001, S002" />
 
           <label for="rtLocation">위치</label>
           <input id="rtLocation" type="text" list="locationSuggestions" />
@@ -582,7 +578,7 @@
 
           <div id="civilManageGroup">
             <label for="civilManageNo">관리번호</label>
-            <input id="civilManageNo" type="text" inputmode="latin" autocapitalize="characters" autocomplete="off" placeholder="예: S001, S002" list="manageNoSuggestions" />
+            <input id="civilManageNo" type="text" inputmode="latin" autocapitalize="characters" autocomplete="off" placeholder="예: S001, S002" />
           </div>
 
           <div id="civilLocationGroup">
@@ -653,7 +649,7 @@
           </div>
 
           <label for="policeManageNo">관리번호</label>
-          <input id="policeManageNo" type="text" inputmode="latin" autocapitalize="characters" autocomplete="off" placeholder="예: S001, S002" list="manageNoSuggestions" />
+          <input id="policeManageNo" type="text" inputmode="latin" autocapitalize="characters" autocomplete="off" placeholder="예: S001, S002" />
 
           <label for="policeLocation">주소 / 위치</label>
           <input id="policeLocation" type="text" list="locationSuggestions" />
@@ -816,7 +812,7 @@
           <input id="infoReceiptNo" type="text" />
 
           <label for="infoManageNo">관리번호</label>
-          <input id="infoManageNo" type="text" inputmode="latin" autocapitalize="characters" autocomplete="off" placeholder="예: S001, S002" list="manageNoSuggestions" />
+          <input id="infoManageNo" type="text" inputmode="latin" autocapitalize="characters" autocomplete="off" placeholder="예: S001, S002" />
 
           <label for="infoClaimantName">청구인이름</label>
           <input id="infoClaimantName" type="text" />

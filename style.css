@@ -4123,3 +4123,83 @@ input[list] {
     font-size: 12.5px;
   }
 }
+
+
+/* =====================
+   v0.8.4-mobile-cloud mobile UX cleanup
+===================== */
+
+/* 홈 상단 클라우드 카드 배너 대신 이름 옆 작은 점만 사용 */
+.homeCloudStatus {
+  display: none !important;
+}
+
+.userStatusLine {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 5px;
+  max-width: 126px;
+}
+
+.userStatusLine .userName {
+  min-width: 0;
+}
+
+.cloudStatusDot {
+  width: 7px;
+  height: 7px;
+  flex: 0 0 7px;
+  border-radius: 999px;
+  background: #aeb6c2;
+  box-shadow: 0 0 0 2px rgba(174, 182, 194, 0.14);
+}
+
+.cloudStatusDot.ok {
+  background: #5aa776;
+  box-shadow: 0 0 0 2px rgba(90, 167, 118, 0.16);
+}
+
+.cloudStatusDot.saving {
+  background: #c59a43;
+  box-shadow: 0 0 0 2px rgba(197, 154, 67, 0.16);
+}
+
+.cloudStatusDot.error {
+  background: #c76b6b;
+  box-shadow: 0 0 0 2px rgba(199, 107, 107, 0.16);
+}
+
+/* 긴 구분명은 내부 데이터명은 유지하고 화면 표시만 줄여서 셀 침범 방지 */
+#realtimeSummaryTable th,
+#policeSummaryTable th,
+#monthRealtimeTable th,
+#monthPoliceTable th {
+  white-space: normal !important;
+  word-break: keep-all;
+  line-height: 1.12;
+  font-size: 10.3px;
+  padding-left: 2px;
+  padding-right: 2px;
+}
+
+/* 관리번호는 추천창 없이 직접입력 최적화만 유지 */
+#rtManageNo,
+#civilManageNo,
+#policeManageNo,
+#infoManageNo {
+  letter-spacing: 0.02em;
+}
+
+@media (max-width: 390px) {
+  .userStatusLine {
+    max-width: 112px;
+  }
+
+  #realtimeSummaryTable th,
+  #policeSummaryTable th,
+  #monthRealtimeTable th,
+  #monthPoliceTable th {
+    font-size: 9.8px;
+  }
+}
