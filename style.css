@@ -4375,3 +4375,18 @@ img[src*="logo-bupyeong"] {
     margin-right: auto !important;
   }
 }
+
+
+/* =====================
+   v0.8.2-cloud Firestore sync UI
+===================== */
+.cloudStatusText {
+  margin-top: 6px;
+  color: var(--accent-blue);
+  font-weight: 700;
+}
+
+#cloudReloadBtn {
+  background: var(--surface-soft);
+  color: var(--accent-blue);
+}

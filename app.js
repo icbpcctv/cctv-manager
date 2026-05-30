@@ -1,4 +1,4 @@
-const APP_VERSION = "0.8.1-pc";
+const APP_VERSION = "0.8.2-cloud";
 const KAKAO_EXTERNAL_MAP_URL = "https://map.kakao.com/";
 const DEFAULT_MAP_CENTER = { lat: 37.5070, lng: 126.7218 };
 const DEFAULT_MAP_LABEL = "부평구청";
@@ -12,6 +12,26 @@ const INFO_KEY = "cctv_info_records_v2";
 const PERSONAL_SPECIAL_KEY = "cctv_personal_specials_v2";
 const TEAM_SPECIAL_KEY = "cctv_team_specials_v2";
 const LAST_BACKUP_KEY = "cctv_last_backup_v2";
+
+const CLOUD_ENABLED = true;
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyDWaXefPNcRR6EIpv0KpjdERDcm1IDsPds",
+  authDomain: "cctv-manager-icbp.firebaseapp.com",
+  projectId: "cctv-manager-icbp",
+  storageBucket: "cctv-manager-icbp.firebasestorage.app",
+  messagingSenderId: "227716843687",
+  appId: "1:227716843687:web:d5b93f75c2d64e3b0cf382",
+  measurementId: "G-M2BL3W0YVK"
+};
+
+let cloudDb = null;
+let cloudReady = false;
+let cloudLoading = false;
+let cloudSaving = false;
+let cloudLastLoadedTeam = "";
+let cloudStatusText = "클라우드 연결 준비 중";
+let cloudSaveTimer = null;
+
 
 const DEFAULT_TEAMS = {
   "1조": [],
@@ -86,8 +106,9 @@ function init() {
   bindBackup();
   bindSettings();
   applyTheme();
-  saveAll();
+  saveLocalAll();
   renderAll();
+  initCloudSync();
 }
 
 function readJson(key, fallback) {
@@ -102,7 +123,7 @@ function saveJson(key, value) {
   localStorage.setItem(key, JSON.stringify(value));
 }
 
-function saveAll() {
+function saveLocalAll() {
   saveJson(SETTINGS_KEY, settings);
   saveJson(REALTIME_KEY, realtimeRecords);
   saveJson(CIVIL_KEY, civilRecords);
@@ -111,6 +132,11 @@ function saveAll() {
   saveJson(INFO_KEY, infoRecords);
   saveJson(PERSONAL_SPECIAL_KEY, personalSpecials);
   saveJson(TEAM_SPECIAL_KEY, teamSpecials);
+}
+
+function saveAll() {
+  saveLocalAll();
+  scheduleCloudSave();
 }
 
 function mergeSettings(source) {
@@ -756,6 +782,9 @@ function bindBackup() {
   $("backupExportBtn").addEventListener("click", exportBackup);
   $("backupImportInput").addEventListener("change", importBackup);
   $("resetDataBtn").addEventListener("click", resetAllRecords);
+  if ($("cloudReloadBtn")) {
+    $("cloudReloadBtn").addEventListener("click", () => loadCloudData({ preferCloud: true }));
+  }
 }
 
 function bindSettings() {
@@ -790,6 +819,7 @@ function renderAll() {
   renderMonthPage();
   renderBackupInfo();
   renderSettings();
+  renderCloudStatus();
 }
 
 function renderHeader() {
@@ -1800,6 +1830,7 @@ function saveTeamSettings() {
 
   saveAll();
   renderAll();
+  switchCloudTeamIfNeeded();
   alert("조 정보가 저장되었습니다.");
 }
 
@@ -1823,6 +1854,145 @@ function createBackupPayload() {
     teamSpecials,
   };
 }
+
+
+function applyCloudPayload(payload) {
+  if (!payload || typeof payload !== "object") return;
+
+  settings = mergeSettings(payload.settings || settings);
+  realtimeRecords = ensureIds(payload.realtimeRecords || []);
+  civilRecords = ensureIds(payload.civilRecords || []);
+  policeRecords = ensureIds(payload.policeRecords || []);
+  videoRecords = ensureIds(payload.videoRecords || []);
+  infoRecords = ensureIds(payload.infoRecords || []);
+  personalSpecials = ensureIds(payload.personalSpecials || []);
+  teamSpecials = ensureIds(payload.teamSpecials || []);
+
+  saveLocalAll();
+}
+
+function getCloudTeamId() {
+  return settings.activeTeam || settings.teamName || "1조";
+}
+
+function getCloudDocRef() {
+  if (!cloudDb) return null;
+  const teamId = getCloudTeamId();
+  return cloudDb.collection("cctvManager").doc("v1").collection("teams").doc(teamId).collection("state").doc("main");
+}
+
+function setCloudStatus(text) {
+  cloudStatusText = text;
+  renderCloudStatus();
+}
+
+function renderCloudStatus() {
+  const el = $("cloudStatusText");
+  if (el) el.textContent = cloudStatusText;
+}
+
+async function initCloudSync() {
+  if (!CLOUD_ENABLED) return;
+
+  try {
+    if (!window.firebase || !window.firebase.firestore) {
+      setCloudStatus("클라우드 SDK 로딩 실패 · 로컬 저장 중");
+      return;
+    }
+
+    if (!firebase.apps.length) firebase.initializeApp(FIREBASE_CONFIG);
+    cloudDb = firebase.firestore();
+    cloudReady = true;
+    setCloudStatus("클라우드 연결 중...");
+
+    await loadCloudData({ preferCloud: true });
+  } catch (error) {
+    console.error("Firebase init failed", error);
+    cloudReady = false;
+    setCloudStatus("클라우드 연결 실패 · 로컬 저장 중");
+  }
+}
+
+async function loadCloudData({ preferCloud = true } = {}) {
+  if (!cloudReady || !cloudDb) return;
+  if (cloudLoading) return;
+
+  cloudLoading = true;
+  const teamId = getCloudTeamId();
+
+  try {
+    setCloudStatus(`${teamId} 클라우드 불러오는 중...`);
+    const ref = getCloudDocRef();
+    const snap = await ref.get();
+
+    if (snap.exists && preferCloud) {
+      const data = snap.data();
+      applyCloudPayload(data.payload || data);
+      cloudLastLoadedTeam = teamId;
+      setCloudStatus(`${teamId} 클라우드 동기화 완료`);
+    } else {
+      await saveCloudNow({ force: true });
+      cloudLastLoadedTeam = teamId;
+      setCloudStatus(`${teamId} 클라우드 새 데이터 생성 완료`);
+    }
+
+    renderAll();
+  } catch (error) {
+    console.error("Cloud load failed", error);
+    setCloudStatus(`${teamId} 클라우드 불러오기 실패 · 로컬 저장 중`);
+  } finally {
+    cloudLoading = false;
+    renderCloudStatus();
+  }
+}
+
+function scheduleCloudSave() {
+  if (!cloudReady || cloudLoading || cloudSaving) return;
+
+  clearTimeout(cloudSaveTimer);
+  cloudSaveTimer = setTimeout(() => {
+    saveCloudNow().catch((error) => {
+      console.error("Cloud save failed", error);
+      setCloudStatus("클라우드 저장 실패 · 로컬 저장 완료");
+    });
+  }, 650);
+}
+
+async function saveCloudNow({ force = false } = {}) {
+  if (!cloudReady || !cloudDb) return;
+  if (cloudLoading && !force) return;
+
+  const teamId = getCloudTeamId();
+  const payload = createBackupPayload();
+
+  cloudSaving = true;
+  try {
+    setCloudStatus(`${teamId} 클라우드 저장 중...`);
+    await getCloudDocRef().set({
+      payload,
+      teamId,
+      appVersion: APP_VERSION,
+      updatedAt: new Date().toISOString(),
+    }, { merge: true });
+    cloudLastLoadedTeam = teamId;
+    setCloudStatus(`${teamId} 클라우드 저장 완료`);
+  } finally {
+    cloudSaving = false;
+    renderCloudStatus();
+  }
+}
+
+async function switchCloudTeamIfNeeded() {
+  if (!cloudReady) return;
+  const teamId = getCloudTeamId();
+  if (teamId === cloudLastLoadedTeam) {
+    scheduleCloudSave();
+    return;
+  }
+
+  await loadCloudData({ preferCloud: true });
+}
+
 
 function exportBackup() {
   const payload = createBackupPayload();

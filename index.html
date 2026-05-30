@@ -361,8 +361,10 @@
             <input id="backupImportInput" type="file" accept="application/json" />
           </label>
           <button id="resetDataBtn" class="dangerButton" type="button">초기화</button>
+          <button id="cloudReloadBtn" type="button">클라우드 불러오기</button>
         </div>
         <p id="backupText" class="hintText">백업 정보 없음</p>
+        <p id="cloudStatusText" class="hintText cloudStatusText">클라우드 연결 준비 중</p>
       </div>
 
       <div class="panel appInfo">
@@ -832,6 +834,8 @@
     </div>
   </div>
   <script src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=e21597a0eebbb3884d925f38a48b41f4&libraries=services&autoload=false"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js"></script>
   <script src="app.js"></script>
 </body>
 </html>
