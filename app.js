@@ -1,4 +1,4 @@
-const APP_VERSION = "0.8.5-mobile-code";
+const APP_VERSION = "0.8.6-mobile-fixes";
 const KAKAO_EXTERNAL_MAP_URL = "https://map.kakao.com/";
 const DEFAULT_MAP_CENTER = { lat: 37.5070, lng: 126.7218 };
 const DEFAULT_MAP_LABEL = "부평구청";
@@ -219,6 +219,44 @@ function getWorkDate(date) {
 
   return current;
 }
+
+function getWorkDateFromDateTime(dateValue, timeValue = "") {
+  if (!dateValue) return "";
+
+  const base = parseDateOnly(dateValue);
+  const hour = Number(String(timeValue || "").slice(0, 2));
+  const previous = new Date(base);
+  previous.setDate(base.getDate() - 1);
+
+  if (!Number.isNaN(hour) && hour < 9 && getShift(previous) === "야간") {
+    return dateString(previous);
+  }
+
+  return dateString(base);
+}
+
+function getRecordPrimaryTime(record = {}) {
+  return record.startTime || record.time || record.desiredTime || "";
+}
+
+function getRecordWorkDate(record = {}) {
+  return getWorkDateFromDateTime(record.date, getRecordPrimaryTime(record));
+}
+
+function isRecordOnWorkDate(record, date) {
+  return getRecordWorkDate(record) === date;
+}
+
+function isRecordInPeriod(record, period) {
+  const workDate = getRecordWorkDate(record);
+  return Boolean(workDate && workDate.startsWith(period));
+}
+
+function isRecordInPeriodToDate(record, period, endDate) {
+  const workDate = getRecordWorkDate(record);
+  return Boolean(workDate && workDate.startsWith(period) && workDate <= endDate);
+}
+
 
 function dateString(date) {
   const y = date.getFullYear();
@@ -719,6 +757,7 @@ function bindUppercaseManageInputs() {
 
 function bindMonth() {
   if ($("dailyReportDate")) $("dailyReportDate").value = todayString();
+  if ($("monthlyReportMonth")) $("monthlyReportMonth").value = ymString(currentPeriodDate);
 
   $("prevPeriodBtn").addEventListener("click", () => {
     const mode = $("periodMode").value;
@@ -775,7 +814,8 @@ function bindReports() {
 
   if (monthlyBtn) {
     monthlyBtn.addEventListener("click", () => {
-      openReportPreview("monthly", getPeriodKey());
+      const month = $("monthlyReportMonth")?.value || getPeriodKey();
+      openReportPreview("monthly", month);
     });
   }
 
@@ -994,6 +1034,7 @@ function renderTeamPreview() {
 function syncPeriodInputs() {
   $("periodMonthPicker").value = ymString(currentPeriodDate);
   $("periodYearPicker").value = currentPeriodDate.getFullYear();
+  if ($("monthlyReportMonth")) $("monthlyReportMonth").value = ymString(currentPeriodDate);
 }
 
 function updatePeriodModeUi() {
@@ -1012,8 +1053,8 @@ function renderHomeSummary() {
 }
 
 function renderRealtimeSummary(tableId, today, ym) {
-  const todayRecords = realtimeRecords.filter((r) => r.date === today);
-  const monthRecords = realtimeRecords.filter((r) => r.date.startsWith(ym));
+  const todayRecords = realtimeRecords.filter((r) => isRecordOnWorkDate(r, today));
+  const monthRecords = realtimeRecords.filter((r) => isRecordInPeriod(r, ym));
   const todayValues = realtimeCategories.map((c) => countIncidentByMajor(todayRecords, c));
   const monthValues = realtimeCategories.map((c) => countIncidentByMajor(monthRecords, c));
   renderMatrixTable(tableId, realtimeCategories, [["오늘", ...todayValues, sum(todayValues)]], { hideLabelColumn: true, cellListKey: "homeRealtime" });
@@ -1029,8 +1070,8 @@ function renderCivilSummary(tableId, today, ym) {
 }
 
 function renderPoliceSummary(tableId, today, ym) {
-  const todayRecords = policeRecords.filter((r) => r.date === today);
-  const monthRecords = policeRecords.filter((r) => r.date.startsWith(ym));
+  const todayRecords = policeRecords.filter((r) => isRecordOnWorkDate(r, today));
+  const monthRecords = policeRecords.filter((r) => isRecordInPeriod(r, ym));
   const todayValues = policeCategories.map((c) => countIncidentByMajor(todayRecords, c));
   const monthValues = policeCategories.map((c) => countIncidentByMajor(monthRecords, c));
   renderMatrixTable(tableId, policeCategories, [["오늘", ...todayValues, sum(todayValues)]], { hideLabelColumn: true, cellListKey: "homePolice" });
@@ -1038,17 +1079,17 @@ function renderPoliceSummary(tableId, today, ym) {
 }
 
 function renderVideoSummary(tableId, today, ym) {
-  const todayValues = videoCategories.map((c) => formatVideoCount(videoRecords.filter((r) => r.date === today && r.category === c)));
-  const monthValues = videoCategories.map((c) => formatVideoCount(videoRecords.filter((r) => r.date.startsWith(ym) && r.category === c)));
+  const todayValues = videoCategories.map((c) => formatVideoCount(videoRecords.filter((r) => isRecordOnWorkDate(r, today) && r.category === c)));
+  const monthValues = videoCategories.map((c) => formatVideoCount(videoRecords.filter((r) => isRecordInPeriod(r, ym) && r.category === c)));
   renderMatrixTable(tableId, videoCategories, [
-    ["오늘", ...todayValues, formatVideoCount(videoRecords.filter((r) => r.date === today))],
+    ["오늘", ...todayValues, formatVideoCount(videoRecords.filter((r) => isRecordOnWorkDate(r, today)))],
   ], { hideLabelColumn: true, cellListKey: "homeVideo" });
-  setMonthHint("videoMonthHint", `이번달 누계 <strong>${formatVideoCountInline(videoRecords.filter((r) => r.date.startsWith(ym)))}건</strong>`);
+  setMonthHint("videoMonthHint", `이번달 누계 <strong>${formatVideoCountInline(videoRecords.filter((r) => isRecordInPeriod(r, ym)))}건</strong>`);
 }
 
 function renderInfoSummary(tableId, today, ym) {
-  const todayCount = infoRecords.filter((r) => r.date === today).length;
-  const monthCount = infoRecords.filter((r) => r.date.startsWith(ym)).length;
+  const todayCount = infoRecords.filter((r) => isRecordOnWorkDate(r, today)).length;
+  const monthCount = infoRecords.filter((r) => isRecordInPeriod(r, ym)).length;
   renderTable(tableId, ["오늘"], [[todayCount]], [0]);
   setMonthHint("infoMonthHint", `이번달 누계 <strong>${monthCount}</strong>건`);
 }
@@ -1060,7 +1101,7 @@ function setMonthHint(id, html) {
 
 function countCivilByLabel(date, label) {
   if (label === "정보공개") {
-    return infoRecords.filter((r) => r.date === date).length;
+    return infoRecords.filter((r) => isRecordOnWorkDate(r, date)).length;
   }
 
   return civilRecords.filter((r) => {
@@ -1073,11 +1114,11 @@ function countCivilByLabel(date, label) {
 
 function countCivilByMonthLabel(ym, label) {
   if (label === "정보공개") {
-    return infoRecords.filter((r) => r.date.startsWith(ym)).length;
+    return infoRecords.filter((r) => isRecordInPeriod(r, ym)).length;
   }
 
   return civilRecords.filter((r) => {
-    if (!r.date.startsWith(ym)) return false;
+    if (!isRecordInPeriod(r, ym)) return false;
     if (label === "민원-나") return r.type === "전화민원" && r.phoneOwner === "나";
     if (label === "민원-대리") return r.type === "전화민원" && r.phoneOwner === "대리";
     return r.type === label;
@@ -1102,16 +1143,16 @@ function renderHomeDetails() {
   const today = todayString();
 
   renderTable("realtimeTodayTable", ["번호", "신고/출동/종료", "기관", "관리번호", "위치", "구분", "세부", "내용", "조치사항"],
-    realtimeRecords.filter((r) => r.date === today).map((r, idx) => [idx + 1, `${r.startTime || "-"} / ${r.dispatchTime || "-"} / ${r.endTime || "-"}`, r.agency || "", r.manageNo, r.location, normalizeIncidentCategory(r.category), getIncidentDetail(r), r.content, r.note]), [0]);
+    realtimeRecords.filter((r) => isRecordOnWorkDate(r, today)).map((r, idx) => [idx + 1, `${r.startTime || "-"} / ${r.dispatchTime || "-"} / ${r.endTime || "-"}`, r.agency || "", r.manageNo, r.location, normalizeIncidentCategory(r.category), getIncidentDetail(r), r.content, r.note]), [0]);
 
   renderTable("policeTodayTable", ["번호", "시간", "구분", "세부", "요청기관", "관리번호", "주소/위치", "내용", "조치사항"],
-    policeRecords.filter((r) => r.date === today).map((r, idx) => [idx + 1, r.time, normalizeIncidentCategory(r.category), getIncidentDetail(r), r.agency, r.manageNo, r.location, r.content, r.action]), [0]);
+    policeRecords.filter((r) => isRecordOnWorkDate(r, today)).map((r, idx) => [idx + 1, r.time, normalizeIncidentCategory(r.category), getIncidentDetail(r), r.agency, r.manageNo, r.location, r.content, r.action]), [0]);
 
   renderTable("civilTodayTable", ["번호", "시간", "민원종류", "민원인정보", "연락처", "관리번호", "위치", "민원내용", "조치사항"],
-    civilRecords.filter((r) => r.date === today).map((r, idx) => [idx + 1, r.time, civilTitle(r), r.complainantInfo, r.complainantPhone, r.manageNo, r.location, r.content, r.action]), [0]);
+    civilRecords.filter((r) => isRecordOnWorkDate(r, today)).map((r, idx) => [idx + 1, r.time, civilTitle(r), r.complainantInfo, r.complainantPhone, r.manageNo, r.location, r.content, r.action]), [0]);
 
   renderTable("infoTodayTable", ["번호", "접수일", "청구일", "열람희망", "결과", "접수번호", "관리번호", "청구인", "연락처", "청구내용", "비고"],
-    infoRecords.filter((r) => r.date === today).map((r, idx) => [idx + 1, r.date, r.claimDate, formatInfoDesired(r), r.result, r.receiptNo, r.manageNo, r.claimantName, r.claimantPhone, r.content, r.note]), [0]);
+    infoRecords.filter((r) => isRecordOnWorkDate(r, today)).map((r, idx) => [idx + 1, r.date, r.claimDate, formatInfoDesired(r), r.result, r.receiptNo, r.manageNo, r.claimantName, r.claimantPhone, r.content, r.note]), [0]);
 
   renderApprovalHome();
   renderDestroyHome();
@@ -1155,11 +1196,11 @@ function getPeriodKey() {
 }
 
 function renderMonthlyDaily(key) {
-  const realtime = realtimeRecords.filter((r) => r.date.startsWith(key)).length;
-  const civil = civilRecords.filter((r) => r.date.startsWith(key)).length;
-  const police = policeRecords.filter((r) => r.date.startsWith(key)).length;
-  const video = videoRecords.filter((r) => r.date.startsWith(key)).length;
-  const info = infoRecords.filter((r) => r.date.startsWith(key)).length;
+  const realtime = realtimeRecords.filter((r) => isRecordInPeriod(r, key)).length;
+  const civil = civilRecords.filter((r) => isRecordInPeriod(r, key)).length;
+  const police = policeRecords.filter((r) => isRecordInPeriod(r, key)).length;
+  const video = videoRecords.filter((r) => isRecordInPeriod(r, key)).length;
+  const info = infoRecords.filter((r) => isRecordInPeriod(r, key)).length;
 
   renderMatrixTable(
     "monthDailyTable",
@@ -1170,13 +1211,13 @@ function renderMonthlyDaily(key) {
 }
 
 function renderMonthlyPolice(key) {
-  const values = policeCategories.map((c) => policeRecords.filter((r) => r.date.startsWith(key) && r.category === c).length);
+  const values = policeCategories.map((c) => policeRecords.filter((r) => isRecordInPeriod(r, key) && r.category === c).length);
   renderMatrixTable("monthPoliceTable", policeCategories, [["누계", ...values, sum(values)]], { hideLabelColumn: true, cellListKey: "monthPolice" });
 }
 
 function renderMonthlyVideo(key) {
-  const values = videoCategories.map((c) => formatVideoCount(videoRecords.filter((r) => r.date.startsWith(key) && r.category === c)));
-  renderMatrixTable("monthVideoTable", videoCategories, [["누계", ...values, formatVideoCount(videoRecords.filter((r) => r.date.startsWith(key)))]] , { hideLabelColumn: true, cellListKey: "monthVideo" }); 
+  const values = videoCategories.map((c) => formatVideoCount(videoRecords.filter((r) => isRecordInPeriod(r, key) && r.category === c)));
+  renderMatrixTable("monthVideoTable", videoCategories, [["누계", ...values, formatVideoCount(videoRecords.filter((r) => isRecordInPeriod(r, key)))]] , { hideLabelColumn: true, cellListKey: "monthVideo" }); 
 }
 
 function renderMonthlyCivil(key) {
@@ -1185,22 +1226,22 @@ function renderMonthlyCivil(key) {
 }
 
 function renderMonthlyInfo(key) {
-  const count = infoRecords.filter((r) => r.date.startsWith(key)).length;
+  const count = infoRecords.filter((r) => isRecordInPeriod(r, key)).length;
   renderTable("monthInfoTable", ["누계"], [[count]], [0]);
 }
 
 function renderMonthlyRealtime(key) {
-  const values = realtimeCategories.map((c) => realtimeRecords.filter((r) => r.date.startsWith(key) && r.category === c).length);
+  const values = realtimeCategories.map((c) => realtimeRecords.filter((r) => isRecordInPeriod(r, key) && r.category === c).length);
   renderMatrixTable("monthRealtimeTable", realtimeCategories, [["누계", ...values, sum(values)]], { hideLabelColumn: true, cellListKey: "monthRealtime" });
 }
 
 function countCivilByPeriodLabel(key, label) {
   if (label === "정보공개") {
-    return infoRecords.filter((r) => r.date.startsWith(key)).length;
+    return infoRecords.filter((r) => isRecordInPeriod(r, key)).length;
   }
 
   return civilRecords.filter((r) => {
-    if (!r.date.startsWith(key)) return false;
+    if (!isRecordInPeriod(r, key)) return false;
     if (label === "민원-나") return r.type === "전화민원" && r.phoneOwner === "나";
     if (label === "민원-대리") return r.type === "전화민원" && r.phoneOwner === "대리";
     return r.type === label;
@@ -1209,20 +1250,20 @@ function countCivilByPeriodLabel(key, label) {
 
 function renderMonthlySpecials(key) {
   renderTable("monthPersonalSpecialTable", ["번호", "날짜", "구분", "관리번호", "위치", "내용", "비고"],
-    personalSpecials.filter((r) => r.date.startsWith(key)).map((r, idx) => [idx + 1, r.date, r.category, r.manageNo, r.location, r.content, r.note]), [0]);
+    personalSpecials.filter((r) => isRecordInPeriod(r, key)).map((r, idx) => [idx + 1, r.date, r.category, r.manageNo, r.location, r.content, r.note]), [0]);
   renderTable("monthTeamSpecialTable", ["번호", "날짜", "시간", "제목", "요청기관", "관리번호", "관제요원", "사건개요", "처리결과"],
-    teamSpecials.filter((r) => r.date.startsWith(key)).map((r, idx) => [idx + 1, r.date, r.time, r.specialTitle || r.category, r.agency, r.manageNo, r.operators || r.user, r.content, r.action]), [0]);
+    teamSpecials.filter((r) => isRecordInPeriod(r, key)).map((r, idx) => [idx + 1, r.date, r.time, r.specialTitle || r.category, r.agency, r.manageNo, r.operators || r.user, r.content, r.action]), [0]);
 }
 
 function renderMonthlyDocs(key) {
   renderTable("monthApprovalTable", ["번호", "상태", "방문일시", "소속기관", "직급", "이름", "연락처", "공문번호", "키워드", "내용"],
-    videoRecords.filter((r) => r.date.startsWith(key) && r.approval).map((r, idx) => [
+    videoRecords.filter((r) => isRecordInPeriod(r, key) && r.approval).map((r, idx) => [
       idx + 1, r.approval.completed ? "접수완료" : "대기", formatDateTime(r.approval.visitDateTime), r.approval.org,
       r.approval.rank, r.approval.name, r.approval.phone, r.approval.docNo, r.approval.keyword, r.approval.content,
     ]), [0]);
 
   renderTable("monthDestroyTable", ["번호", "상태", "방문일시", "소속기관", "직급", "이름", "연락처", "공문번호", "발신공문번호", "내용"],
-    videoRecords.filter((r) => r.date.startsWith(key) && r.destroy).map((r, idx) => [
+    videoRecords.filter((r) => isRecordInPeriod(r, key) && r.destroy).map((r, idx) => [
       idx + 1, r.destroy.completed ? "접수완료" : "대기", formatDateTime(r.destroy.visitDateTime), r.destroy.org,
       r.destroy.rank, r.destroy.name, r.destroy.phone, r.destroy.docNo, r.destroy.sendDocNo, r.destroy.content,
     ]), [0]);
@@ -1259,21 +1300,21 @@ function getListPayload(key, options = {}) {
   const today = todayString();
   const period = getPeriodKey();
   const map = {
-    homeRealtime: { title: "오늘 실시간 개인실적", refs: realtimeRecords.filter((r) => r.date === today).map((item) => ref("realtime", item)) },
-    homePolice: { title: "오늘 경찰관제요청", refs: policeRecords.filter((r) => r.date === today).map((item) => ref("police", item)) },
-    homeVideo: { title: "오늘 영상열람반출", refs: videoRecords.filter((r) => r.date === today).map((item) => ref("video", item)) },
-    homeCivil: { title: "오늘 민원처리", refs: civilRecords.filter((r) => r.date === today).map((item) => ref("civil", item)) },
-    homeInfo: { title: "오늘 정보공개", refs: infoRecords.filter((r) => r.date === today).map((item) => ref("info", item)) },
+    homeRealtime: { title: "오늘 실시간 개인실적", refs: realtimeRecords.filter((r) => isRecordOnWorkDate(r, today)).map((item) => ref("realtime", item)) },
+    homePolice: { title: "오늘 경찰관제요청", refs: policeRecords.filter((r) => isRecordOnWorkDate(r, today)).map((item) => ref("police", item)) },
+    homeVideo: { title: "오늘 영상열람반출", refs: videoRecords.filter((r) => isRecordOnWorkDate(r, today)).map((item) => ref("video", item)) },
+    homeCivil: { title: "오늘 민원처리", refs: [...civilRecords.filter((r) => isRecordOnWorkDate(r, today)).map((item) => ref("civil", item)), ...infoRecords.filter((r) => isRecordOnWorkDate(r, today)).map((item) => ref("info", item))] },
+    homeInfo: { title: "오늘 정보공개", refs: infoRecords.filter((r) => isRecordOnWorkDate(r, today)).map((item) => ref("info", item)) },
     homeApproval: { title: "사후결재", refs: videoRecords.filter((r) => r.approval && !r.approval.completed).map((item) => ref("video", item, "사후결재")) },
     homeDestroy: { title: "파기공문", refs: videoRecords.filter((r) => r.destroy && !r.destroy.completed).map((item) => ref("video", item, "파기공문")) },
-    monthRealtime: { title: "실시간 개인실적", refs: realtimeRecords.filter((r) => r.date.startsWith(period)).map((item) => ref("realtime", item)) },
-    monthPolice: { title: "경찰관제요청", refs: policeRecords.filter((r) => r.date.startsWith(period)).map((item) => ref("police", item)) },
-    monthVideo: { title: "영상열람반출", refs: videoRecords.filter((r) => r.date.startsWith(period)).map((item) => ref("video", item)) },
-    monthCivil: { title: "민원처리", refs: [...civilRecords.filter((r) => r.date.startsWith(period)).map((item) => ref("civil", item)), ...infoRecords.filter((r) => r.date.startsWith(period)).map((item) => ref("info", item))] },
-    monthPersonalSpecial: { title: "개인특이사항", refs: personalSpecials.filter((r) => r.date.startsWith(period)).map((item) => ref("realtime", item, "개인특이")) },
-    monthTeamSpecial: { title: "조특이사항", refs: teamSpecials.filter((r) => r.date.startsWith(period)).map((item) => ref("police", item, "조특이")) },
-    monthApproval: { title: "사후결재", refs: videoRecords.filter((r) => r.date.startsWith(period) && r.approval).map((item) => ref("video", item, "사후결재")) },
-    monthDestroy: { title: "파기공문", refs: videoRecords.filter((r) => r.date.startsWith(period) && r.destroy).map((item) => ref("video", item, "파기공문")) },
+    monthRealtime: { title: "실시간 개인실적", refs: realtimeRecords.filter((r) => isRecordInPeriod(r, period)).map((item) => ref("realtime", item)) },
+    monthPolice: { title: "경찰관제요청", refs: policeRecords.filter((r) => isRecordInPeriod(r, period)).map((item) => ref("police", item)) },
+    monthVideo: { title: "영상열람반출", refs: videoRecords.filter((r) => isRecordInPeriod(r, period)).map((item) => ref("video", item)) },
+    monthCivil: { title: "민원처리", refs: [...civilRecords.filter((r) => isRecordInPeriod(r, period)).map((item) => ref("civil", item)), ...infoRecords.filter((r) => isRecordInPeriod(r, period)).map((item) => ref("info", item))] },
+    monthPersonalSpecial: { title: "개인특이사항", refs: personalSpecials.filter((r) => isRecordInPeriod(r, period)).map((item) => ref("realtime", item, "개인특이")) },
+    monthTeamSpecial: { title: "조특이사항", refs: teamSpecials.filter((r) => isRecordInPeriod(r, period)).map((item) => ref("police", item, "조특이")) },
+    monthApproval: { title: "사후결재", refs: videoRecords.filter((r) => isRecordInPeriod(r, period) && r.approval).map((item) => ref("video", item, "사후결재")) },
+    monthDestroy: { title: "파기공문", refs: videoRecords.filter((r) => isRecordInPeriod(r, period) && r.destroy).map((item) => ref("video", item, "파기공문")) },
   };
   if (key === "monthDaily") return getDailyPayload(period, options.category || "");
   if (key === "dateDetail") return getDateDetailPayload(options.date);
@@ -1308,12 +1349,12 @@ function getPeriodDateList(period, fallbackDates) {
 function getDailyPayload(period, category = "") {
   if (category) {
     const refsByCategory = {
-      "개인실적": realtimeRecords.filter((r) => r.date.startsWith(period)).map((item) => ref("realtime", item)),
-      "민원처리": civilRecords.filter((r) => r.date.startsWith(period)).map((item) => ref("civil", item)),
-      "민원": civilRecords.filter((r) => r.date.startsWith(period)).map((item) => ref("civil", item)),
-      "경찰관제": policeRecords.filter((r) => r.date.startsWith(period)).map((item) => ref("police", item)),
-      "열람복제": videoRecords.filter((r) => r.date.startsWith(period)).map((item) => ref("video", item)),
-      "정보공개": infoRecords.filter((r) => r.date.startsWith(period)).map((item) => ref("info", item)),
+      "개인실적": realtimeRecords.filter((r) => isRecordInPeriod(r, period)).map((item) => ref("realtime", item)),
+      "민원처리": civilRecords.filter((r) => isRecordInPeriod(r, period)).map((item) => ref("civil", item)),
+      "민원": civilRecords.filter((r) => isRecordInPeriod(r, period)).map((item) => ref("civil", item)),
+      "경찰관제": policeRecords.filter((r) => isRecordInPeriod(r, period)).map((item) => ref("police", item)),
+      "열람복제": videoRecords.filter((r) => isRecordInPeriod(r, period)).map((item) => ref("video", item)),
+      "정보공개": infoRecords.filter((r) => isRecordInPeriod(r, period)).map((item) => ref("info", item)),
     };
     return { title: `일자별 현황 · ${category}`, html: renderRecordList(refsByCategory[category] || []) };
   }
@@ -1321,7 +1362,8 @@ function getDailyPayload(period, category = "") {
   const dates = new Set();
 
   [...realtimeRecords, ...civilRecords, ...policeRecords, ...videoRecords, ...infoRecords].forEach((r) => {
-    if (r.date && r.date.startsWith(period)) dates.add(r.date);
+    const workDate = getRecordWorkDate(r);
+    if (workDate && workDate.startsWith(period)) dates.add(workDate);
   });
 
   const html = `
@@ -1332,11 +1374,11 @@ function getDailyPayload(period, category = "") {
         </thead>
         <tbody>
           ${getPeriodDateList(period, dates).map((date) => {
-            const rt = realtimeRecords.filter((r) => r.date === date).length;
-            const cv = civilRecords.filter((r) => r.date === date).length;
-            const po = policeRecords.filter((r) => r.date === date).length;
-            const vi = videoRecords.filter((r) => r.date === date).length;
-            const inf = infoRecords.filter((r) => r.date === date).length;
+            const rt = realtimeRecords.filter((r) => isRecordOnWorkDate(r, date)).length;
+            const cv = civilRecords.filter((r) => isRecordOnWorkDate(r, date)).length;
+            const po = policeRecords.filter((r) => isRecordOnWorkDate(r, date)).length;
+            const vi = videoRecords.filter((r) => isRecordOnWorkDate(r, date)).length;
+            const inf = infoRecords.filter((r) => isRecordOnWorkDate(r, date)).length;
             const hasRecord = rt + cv + po + vi + inf > 0;
 
             return `<tr class="${hasRecord ? "hasRecord" : ""}" data-date-detail="${escapeHtml(date)}"><td>${escapeHtml(date)}</td><td>${rt}</td><td>${cv}</td><td>${po}</td><td>${vi}</td><td>${inf}</td></tr>`;
@@ -1351,11 +1393,11 @@ function getDailyPayload(period, category = "") {
 
 function getDateDetailPayload(date) {
   const refs = [
-    ...realtimeRecords.filter((r) => r.date === date).map((item) => ref("realtime", item)),
-    ...civilRecords.filter((r) => r.date === date).map((item) => ref("civil", item)),
-    ...policeRecords.filter((r) => r.date === date).map((item) => ref("police", item)),
-    ...videoRecords.filter((r) => r.date === date).map((item) => ref("video", item)),
-    ...infoRecords.filter((r) => r.date === date).map((item) => ref("info", item)),
+    ...realtimeRecords.filter((r) => isRecordOnWorkDate(r, date)).map((item) => ref("realtime", item)),
+    ...civilRecords.filter((r) => isRecordOnWorkDate(r, date)).map((item) => ref("civil", item)),
+    ...policeRecords.filter((r) => isRecordOnWorkDate(r, date)).map((item) => ref("police", item)),
+    ...videoRecords.filter((r) => isRecordOnWorkDate(r, date)).map((item) => ref("video", item)),
+    ...infoRecords.filter((r) => isRecordOnWorkDate(r, date)).map((item) => ref("info", item)),
   ];
   return { title: `${date} 세부내용`, html: renderRecordList(refs) };
 }
@@ -2378,16 +2420,16 @@ function updateIncidentDetailOptions(categoryId, detailId, selected = "") {
 
 function dailyCountSet(date) {
   const ym = getMonthlyKeyFromDate(date);
-  const dayRealtime = realtimeRecords.filter((r) => r.date === date);
-  const monthRealtime = realtimeRecords.filter((r) => r.date.startsWith(ym));
-  const dayCivil = civilRecords.filter((r) => r.date === date);
-  const monthCivil = civilRecords.filter((r) => r.date.startsWith(ym));
-  const dayPolice = policeRecords.filter((r) => r.date === date);
-  const monthPolice = policeRecords.filter((r) => r.date.startsWith(ym));
-  const dayVideo = videoRecords.filter((r) => r.date === date);
-  const monthVideo = videoRecords.filter((r) => r.date.startsWith(ym));
-  const dayInfo = infoRecords.filter((r) => r.date === date);
-  const monthInfo = infoRecords.filter((r) => r.date.startsWith(ym));
+  const dayRealtime = realtimeRecords.filter((r) => isRecordOnWorkDate(r, date));
+  const monthRealtime = realtimeRecords.filter((r) => isRecordInPeriodToDate(r, ym, date));
+  const dayCivil = civilRecords.filter((r) => isRecordOnWorkDate(r, date));
+  const monthCivil = civilRecords.filter((r) => isRecordInPeriodToDate(r, ym, date));
+  const dayPolice = policeRecords.filter((r) => isRecordOnWorkDate(r, date));
+  const monthPolice = policeRecords.filter((r) => isRecordInPeriodToDate(r, ym, date));
+  const dayVideo = videoRecords.filter((r) => isRecordOnWorkDate(r, date));
+  const monthVideo = videoRecords.filter((r) => isRecordInPeriodToDate(r, ym, date));
+  const dayInfo = infoRecords.filter((r) => isRecordOnWorkDate(r, date));
+  const monthInfo = infoRecords.filter((r) => isRecordInPeriodToDate(r, ym, date));
 
   const realtime = realtimeCategories.map((category) => ({
     category,
@@ -2433,7 +2475,7 @@ function printReportPreview() {
 }
 
 function getDailyLogRows(date) {
-  const realtime = realtimeRecords.filter((r) => r.date === date).map((r) => ({
+  const realtime = realtimeRecords.filter((r) => isRecordOnWorkDate(r, date)).map((r) => ({
     sortTime: r.startTime || "",
     time: [r.startTime, r.dispatchTime, r.endTime].filter(Boolean).join(" / "),
     manageNo: r.manageNo,
@@ -2443,7 +2485,7 @@ function getDailyLogRows(date) {
     result: r.note,
   }));
 
-  const bellResponse = civilRecords.filter((r) => r.date === date && r.type === "비상벨대응").map((r) => ({
+  const bellResponse = civilRecords.filter((r) => isRecordOnWorkDate(r, date) && r.type === "비상벨대응").map((r) => ({
     sortTime: r.time || "",
     time: r.time || "",
     manageNo: r.manageNo,
@@ -2460,18 +2502,18 @@ function buildDailyReport(date) {
   const counts = dailyCountSet(date);
   const realtimeRows = getDailyLogRows(date).slice(0, 4);
 
-  const dayRealtime = realtimeRecords.filter((r) => r.date === date);
-  const dayCivil = civilRecords.filter((r) => r.date === date);
-  const dayPolice = policeRecords.filter((r) => r.date === date);
-  const dayVideo = videoRecords.filter((r) => r.date === date);
-  const dayInfo = infoRecords.filter((r) => r.date === date);
+  const dayRealtime = realtimeRecords.filter((r) => isRecordOnWorkDate(r, date));
+  const dayCivil = civilRecords.filter((r) => isRecordOnWorkDate(r, date));
+  const dayPolice = policeRecords.filter((r) => isRecordOnWorkDate(r, date));
+  const dayVideo = videoRecords.filter((r) => isRecordOnWorkDate(r, date));
+  const dayInfo = infoRecords.filter((r) => isRecordOnWorkDate(r, date));
 
   const monthKey = getMonthlyKeyFromDate(date);
-  const monthRealtime = realtimeRecords.filter((r) => r.date.startsWith(monthKey));
-  const monthCivil = civilRecords.filter((r) => r.date.startsWith(monthKey));
-  const monthPolice = policeRecords.filter((r) => r.date.startsWith(monthKey));
-  const monthVideo = videoRecords.filter((r) => r.date.startsWith(monthKey));
-  const monthInfo = infoRecords.filter((r) => r.date.startsWith(monthKey));
+  const monthRealtime = realtimeRecords.filter((r) => isRecordInPeriodToDate(r, monthKey, date));
+  const monthCivil = civilRecords.filter((r) => isRecordInPeriodToDate(r, monthKey, date));
+  const monthPolice = policeRecords.filter((r) => isRecordInPeriodToDate(r, monthKey, date));
+  const monthVideo = videoRecords.filter((r) => isRecordInPeriodToDate(r, monthKey, date));
+  const monthInfo = infoRecords.filter((r) => isRecordInPeriodToDate(r, monthKey, date));
 
   const dailyCols = [
     { label: "강력<br>범죄", day: countIncidentByMajor(dayRealtime, "강력"), month: countIncidentByMajor(monthRealtime, "강력") },
@@ -2558,22 +2600,25 @@ function formatDetailCounts(list, major) {
 
 function buildMonthlyReport(key) {
   const title = key.length === 4 ? `${key}년` : `${Number(key.slice(0, 4))}년 ${Number(key.slice(5, 7))}월`;
-  const periodRealtime = realtimeRecords.filter((r) => r.date.startsWith(key));
-  const periodPolice = policeRecords.filter((r) => r.date.startsWith(key));
+  const periodRealtime = realtimeRecords.filter((r) => isRecordInPeriod(r, key));
+  const periodPolice = policeRecords.filter((r) => isRecordInPeriod(r, key));
   const rt = realtimeCategories.map((category) => countIncidentByMajor(periodRealtime, category));
   const civil = {
-    bellResponse: countBy(civilRecords, (r) => r.date.startsWith(key) && r.type === "비상벨대응"),
-    bellGuide: countBy(civilRecords, (r) => r.date.startsWith(key) && r.type === "비상벨계도"),
-    bellEtc: countBy(civilRecords, (r) => r.date.startsWith(key) && r.type === "비상벨기타"),
-    phone: countBy(civilRecords, (r) => r.date.startsWith(key) && r.type === "전화민원"),
-    info: countBy(infoRecords, (r) => r.date.startsWith(key)),
+    bellResponse: countBy(civilRecords, (r) => isRecordInPeriod(r, key) && r.type === "비상벨대응"),
+    bellGuide: countBy(civilRecords, (r) => isRecordInPeriod(r, key) && r.type === "비상벨계도"),
+    bellEtc: countBy(civilRecords, (r) => isRecordInPeriod(r, key) && r.type === "비상벨기타"),
+    phone: countBy(civilRecords, (r) => isRecordInPeriod(r, key) && r.type === "전화민원"),
+    info: countBy(infoRecords, (r) => isRecordInPeriod(r, key)),
   };
   const police = policeCategories.map((category) => countIncidentByMajor(periodPolice, category));
-  const video = videoCategories.map((category) => countBy(videoRecords, (r) => r.date.startsWith(key) && r.category === category));
-  const videoView = countBy(videoRecords, (r) => r.date.startsWith(key) && r.process === "열람");
-  const videoCopy = countBy(videoRecords, (r) => r.date.startsWith(key) && r.process === "복제");
-  const mainSpecials = teamSpecials.filter((r) => r.date.startsWith(key));
-  const bellSpecials = civilRecords.filter((r) => r.date.startsWith(key) && ["비상벨대응", "비상벨계도", "비상벨기타"].includes(r.type));
+  const video = videoCategories.map((category) => countBy(videoRecords, (r) => isRecordInPeriod(r, key) && r.category === category));
+  const videoView = countBy(videoRecords, (r) => isRecordInPeriod(r, key) && r.process === "열람");
+  const videoCopy = countBy(videoRecords, (r) => isRecordInPeriod(r, key) && r.process === "복제");
+  const mainSpecials = [
+    ...personalSpecials.filter((r) => isRecordInPeriod(r, key)).map((item) => ({ ...item, specialKind: "개인특이사항" })),
+    ...teamSpecials.filter((r) => isRecordInPeriod(r, key)).map((item) => ({ ...item, specialKind: "조특이사항" })),
+  ];
+  const bellSpecials = civilRecords.filter((r) => isRecordInPeriod(r, key) && ["비상벨대응", "비상벨계도", "비상벨기타"].includes(r.type));
 
   const totalRow = [
     ...rt,
@@ -2654,15 +2699,15 @@ function recordBelongsToMember(item, member) {
 }
 
 function countMemberRecords(key, member) {
-  const memberRealtime = realtimeRecords.filter((r) => r.date.startsWith(key) && recordBelongsToMember(r, member));
+  const memberRealtime = realtimeRecords.filter((r) => isRecordInPeriod(r, key) && recordBelongsToMember(r, member));
   const rt = realtimeCategories.map((category) => countIncidentByMajor(memberRealtime, category));
-  const bellResponse = countBy(civilRecords, (r) => r.date.startsWith(key) && recordBelongsToMember(r, member) && r.type === "비상벨대응");
-  const bellGuide = countBy(civilRecords, (r) => r.date.startsWith(key) && recordBelongsToMember(r, member) && r.type === "비상벨계도");
-  const bellEtc = countBy(civilRecords, (r) => r.date.startsWith(key) && recordBelongsToMember(r, member) && r.type === "비상벨기타");
-  const phone = countBy(civilRecords, (r) => r.date.startsWith(key) && recordBelongsToMember(r, member) && r.type === "전화민원");
-  const info = countBy(infoRecords, (r) => r.date.startsWith(key) && recordBelongsToMember(r, member));
-  const police = countBy(policeRecords, (r) => r.date.startsWith(key) && recordBelongsToMember(r, member));
-  const video = countBy(videoRecords, (r) => r.date.startsWith(key) && recordBelongsToMember(r, member));
+  const bellResponse = countBy(civilRecords, (r) => isRecordInPeriod(r, key) && recordBelongsToMember(r, member) && r.type === "비상벨대응");
+  const bellGuide = countBy(civilRecords, (r) => isRecordInPeriod(r, key) && recordBelongsToMember(r, member) && r.type === "비상벨계도");
+  const bellEtc = countBy(civilRecords, (r) => isRecordInPeriod(r, key) && recordBelongsToMember(r, member) && r.type === "비상벨기타");
+  const phone = countBy(civilRecords, (r) => isRecordInPeriod(r, key) && recordBelongsToMember(r, member) && r.type === "전화민원");
+  const info = countBy(infoRecords, (r) => isRecordInPeriod(r, key) && recordBelongsToMember(r, member));
+  const police = countBy(policeRecords, (r) => isRecordInPeriod(r, key) && recordBelongsToMember(r, member));
+  const video = countBy(videoRecords, (r) => isRecordInPeriod(r, key) && recordBelongsToMember(r, member));
   return [...rt, bellResponse, bellGuide, bellEtc, phone, info, police, video];
 }
 
@@ -2709,7 +2754,7 @@ function buildMonthlySpecialTable(items, kind) {
       <tbody>
         <tr><th>일 시</th><th>주 요 내 용</th></tr>
         ${items.map((item) => {
-          const title = kind === "civil" ? reportCivilLine(item) : reportPoliceLine(item);
+          const title = kind === "civil" ? reportCivilLine(item) : (item.specialKind === "개인특이사항" ? reportPersonalLine(item) : reportPoliceLine(item));
           return `<tr><td>${escapeHtml(settings.activeTeam || "")}<br>${escapeHtml(formatKoreanDate(item.date))}<br>${escapeHtml(getShift(parseDateOnly(item.date)))}</td><td>${title}</td></tr>`;
         }).join("")}
       </tbody>
@@ -2726,6 +2771,10 @@ function reportPoliceLine(item) {
   const title = item.specialTitle || item.category || "경찰관제요청";
   const operators = item.operators || item.user || getUserName();
   return `□ [${escapeHtml(title)}]<br>- 장    소: ${escapeHtml(item.location || "")} (${escapeHtml(item.manageNo || "")})<br>- 관제요원: ${escapeHtml(operators)}<br>- 사건개요: ${escapeHtml(item.content || "")}<br>- 처리결과: ${escapeHtml(item.action || "")}`;
+}
+
+function reportPersonalLine(item) {
+  return `□ [${escapeHtml(item.specialKind || "개인특이사항")} / ${escapeHtml(item.category || "")}]<br>- 장    소: ${escapeHtml(item.location || "")} (${escapeHtml(item.manageNo || "")})<br>- 관제요원: ${escapeHtml(item.user || getUserName())}<br>- 사건개요: ${escapeHtml(item.content || "")}<br>- 처리결과: ${escapeHtml(item.note || "")}`;
 }
 
 function reportCivilLine(item) {
@@ -2822,13 +2871,13 @@ function csv(value) {
 
 function collectPeriodItems(key) {
   return [
-    ...realtimeRecords.filter((r) => r.date.startsWith(key)).map((item) => ({ group: "실시간 개인실적", item })),
-    ...civilRecords.filter((r) => r.date.startsWith(key)).map((item) => ({ group: "민원처리", item })),
-    ...policeRecords.filter((r) => r.date.startsWith(key)).map((item) => ({ group: "경찰관제요청", item })),
-    ...videoRecords.filter((r) => r.date.startsWith(key)).map((item) => ({ group: "영상열람반출", item })),
-    ...infoRecords.filter((r) => r.date.startsWith(key)).map((item) => ({ group: "정보공개", item })),
-    ...personalSpecials.filter((r) => r.date.startsWith(key)).map((item) => ({ group: "개인특이사항", item })),
-    ...teamSpecials.filter((r) => r.date.startsWith(key)).map((item) => ({ group: "조특이사항", item })),
+    ...realtimeRecords.filter((r) => isRecordInPeriod(r, key)).map((item) => ({ group: "실시간 개인실적", item })),
+    ...civilRecords.filter((r) => isRecordInPeriod(r, key)).map((item) => ({ group: "민원처리", item })),
+    ...policeRecords.filter((r) => isRecordInPeriod(r, key)).map((item) => ({ group: "경찰관제요청", item })),
+    ...videoRecords.filter((r) => isRecordInPeriod(r, key)).map((item) => ({ group: "영상열람반출", item })),
+    ...infoRecords.filter((r) => isRecordInPeriod(r, key)).map((item) => ({ group: "정보공개", item })),
+    ...personalSpecials.filter((r) => isRecordInPeriod(r, key)).map((item) => ({ group: "개인특이사항", item })),
+    ...teamSpecials.filter((r) => isRecordInPeriod(r, key)).map((item) => ({ group: "조특이사항", item })),
   ];
 }
 

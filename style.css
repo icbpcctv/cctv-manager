@@ -4294,3 +4294,18 @@ input[list] {
   background: var(--surface-soft);
   color: var(--accent-blue);
 }
+
+
+/* =====================
+   v0.8.6-mobile-fixes
+===================== */
+
+.reportControlGrid {
+  grid-template-columns: 118px 1fr;
+}
+
+@media (max-width: 390px) {
+  .reportControlGrid {
+    grid-template-columns: 1fr;
+  }
+}
